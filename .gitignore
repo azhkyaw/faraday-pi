@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Models & private data — large / not for version control
+models/
+*.gguf
+*.bin
+data/
+corpus/
+*.sqlite
+*.sqlite3
+*.db
+
+# Benchmark/eval outputs: keep curated CSVs + plots, ignore raw logs
+results/raw/
+*.log
+
+# Environment / secrets
+.env
+*.local
+secrets/
+
+# Claude Code local settings (keep shared settings.json; ignore local overrides)
+.claude/settings.local.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
