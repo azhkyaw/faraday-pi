@@ -47,7 +47,7 @@ The headline differentiator versus the thousands of "I put an LLM on a Pi" posts
 
 ## 4. Constraints and assumptions
 
-- **Hardware**: Raspberry Pi 4. **Assumption: 8GB RAM variant** (strongly recommended for 3B-class models at usable quant). If only 4GB is available, the default generation model drops to ~1.5B and the sweep's RAM ceilings shift — this is documented as a finding, not a failure. *(Open question — confirm RAM variant; see §16.)*
+- **Hardware**: Raspberry Pi 4, **4GB RAM (confirmed)**. This is the tighter, more common variant — and the constraint *is* the story: fitting a useful RAG appliance in 4GB is a stronger engineering signal than doing it with headroom. The default generation model is therefore a **1.5B-class** model (comfortable in 4GB); larger 3B models are explored in the sweep to chart exactly where the 4GB wall hits. Peak RAM is recorded per cell, making the published leaderboard directly useful to the large population of ≤4GB single-board computers.
 - **No GPU / no CUDA**: ARM Cortex-A72 CPU inference only. Local models are small and quantized.
 - **Text-only**: no camera/mic/sensors. The product is document Q&A.
 - **Offline at serve time**: the appliance makes no network calls when answering. (Eval tooling may use a cloud LLM-judge — at *eval time only*, off the serving path; see §9/§10.)
@@ -135,7 +135,7 @@ Each component has one clear purpose, a defined interface, and explicit dependen
 |---|---|---|
 | OS | Raspberry Pi OS Lite (64-bit) | Headless, ARM64, minimal RAM overhead |
 | Inference runtime | **`llama.cpp`** (source build, NEON flags) | Full control of quant, KV-cache, grammars — the levers an inference engineer is hired to pull |
-| Generation model | **Qwen2.5-3B-Instruct** GGUF @ Q4_K_M (default) | Strong small instruct model; sweep covers 1B/1.5B/3B × Q8→Q2 |
+| Generation model | **Qwen2.5-1.5B-Instruct** GGUF @ Q4_K_M (default) | Reliable in 4GB with room for KV-cache + embeddings; sweep still covers 1B/1.5B/3B × Q8→Q2, with 3B as the frontier-ceiling model |
 | Embedding model | `bge-small-en-v1.5` (or `nomic-embed-text`) | Tiny, high-quality, runs on-device |
 | Vector DB | **`sqlite-vec`** | Single file, zero daemon, survives power-cycle — the edge-native choice |
 | Orchestrator / API | **FastAPI** (async, SSE) | Clean OpenAI-compatible surface, streaming |
@@ -149,10 +149,10 @@ Each component has one clear purpose, a defined interface, and explicit dependen
 
 Six studies. Each produces committed CSVs + plots and a section of the written report.
 
-1. **Quantization sweep → the headline chart.** For each candidate model (Qwen2.5-1.5B/3B, Llama-3.2-1B/3B, optionally Gemma-2-2B), build GGUF at Q8_0 → Q6_K → Q5_K_M → Q4_K_M → Q3_K_M → Q2_K. Measure per cell: disk size, peak RAM (RSS), prefill tok/s, decode tok/s, TTFT (via `llama-bench` + custom end-to-end timing). **Output**: the quality-vs-footprint frontier plot with the sweet-spot knee marked.
+1. **Quantization sweep → the headline chart.** For each candidate model (Qwen2.5-1.5B/3B, Llama-3.2-1B/3B, optionally Gemma-2-2B), build GGUF at Q8_0 → Q6_K → Q5_K_M → Q4_K_M → Q3_K_M → Q2_K. Measure per cell: disk size, peak RAM (RSS), prefill tok/s, decode tok/s, TTFT (via `llama-bench` + custom end-to-end timing). On 4GB, higher-quant 3B cells are expected to hit a hard RAM wall (OOM) — **charting that wall is itself a headline finding**, not a gap. **Output**: the quality-vs-footprint frontier plot with the sweet-spot knee and the 4GB ceiling marked.
 2. **Quality eval.** Perplexity (wikitext) per quant + task quality on a held-out QA set scored by an **LLM-judge** (1–5 correctness + faithfulness). Judge runs via a cloud API **at eval time only**; the appliance stays air-gapped.
 3. **RAG-specific eval.** Label ~50–100 `(question, gold-answer, gold-source)` triples → measure retrieval **recall@k**, **citation accuracy**, **end-to-end answer quality**. Ablate chunk size, top-k, embedding model, rerank on/off — each ablation a table row with a takeaway.
-4. **Optimization study.** Before/after deltas for each lever: thread count, CPU governor + safe overclock, KV-cache quantization, flash-attention, mmap vs load, batch/ubatch sizes, prompt/prefix caching, and **speculative decoding** (a ~0.5B draft model for the 3B target) as the showpiece. **Output**: a throughput waterfall ("baseline → +X → +Y → final").
+4. **Optimization study.** Before/after deltas for each lever: thread count, CPU governor + safe overclock, KV-cache quantization, flash-attention, mmap vs load, batch/ubatch sizes, prompt/prefix caching, and **speculative decoding** (a ~0.5B draft model for the 1.5B target) as the showpiece. Under 4GB, both draft and target must stay resident, so whether spec-decoding's speedup survives the added memory pressure is itself a finding. **Output**: a throughput waterfall ("baseline → +X → +Y → final").
 5. **Sustained-load & thermal reality.** The Pi 4 throttles when hot. Measure tok/s over a 30-min sustained run, with/without a heatsink, logging CPU temp. Report **steady-state vs burst**.
 6. **Energy (optional stretch).** A ~$10 inline USB power meter → **tokens/sec per watt**. Flagged optional (a meter, not a build peripheral).
 
@@ -192,7 +192,7 @@ Six studies. Each produces committed CSVs + plots and a section of the written r
 ## 13. Deliverables (portfolio artifacts)
 
 - **GitHub repo**: documented, one-command setup; appliance + bench/eval harness; results (CSVs + plots) committed.
-- **Technical report / blog post**: *"Engineering a private RAG appliance on a $60 computer"* — frontier charts, optimization waterfall, eval methodology.
+- **Technical report / blog post**: *"Engineering a private RAG appliance on a 4GB Raspberry Pi"* — frontier charts, optimization waterfall, eval methodology.
 - **Demo GIF**: the appliance answering document questions in airplane mode (the offline flex).
 - **Pi-4 quant leaderboard**: a reusable community table ("what runs well on a Pi 4").
 - **Architecture diagram + an honest "limits & what's next"** section.
@@ -216,8 +216,8 @@ M0–M3 deliver a working product; M4 is the rigor; M5 is the narrative. M4 stud
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | 3B-class quality too low to be useful | Model+quant sweep finds best fit; RAG grounding reduces reliance on parametric knowledge; abstention guardrail; honest reporting |
-| R2 | 4GB Pi can't hold 3B at good quant | Default to ~1.5B; document the RAM ceiling as a finding; recommend 8GB |
+| R1 | 1.5B-class quality too low to be useful | RAG grounding shifts the task from recall to reading provided context (a small-model strength); quant sweep finds the best fit; abstention guardrail; honest reporting |
+| R2 | 4GB is tight — 3B won't fit at good quant; KV-cache + long context risk OOM even for 1.5B | Default to 1.5B; cap context length; quantize the KV-cache; memory-budget guard at startup; treat 3B as exploratory and record where it OOMs |
 | R3 | Throughput too slow for pleasant UX | Optimization study (speculative decoding, KV-cache, threads); streaming masks latency; framed as an appliance, not a speed race |
 | R4 | Thermal throttling skews benchmarks | Control with heatsink; report steady-state; log temps |
 | R5 | Eval set too small to generalize | ~50–100 triples; report caveats/confidence honestly |
@@ -225,7 +225,6 @@ M0–M3 deliver a working product; M4 is the rigor; M5 is the narrative. M4 stud
 
 ## 16. Open questions / deferred decisions
 
-- **Pi 4 RAM variant (4GB vs 8GB)** — confirm; affects default model. Assume 8GB until told otherwise.
 - **Reranker as a first-class component?** Deferred — start without; add in the M4 ablation if recall is weak.
 - **UI framework** (HTMX vs small Svelte) — deferred to M2; HTMX default.
 - **Public eval corpus selection** — pick a concrete, license-clean document set during M4.
@@ -241,7 +240,7 @@ M0–M3 deliver a working product; M4 is the rigor; M5 is the narrative. M4 stud
 
 - Showcase: **Edge AI / on-device inference**.
 - Pi's role: **Central — edge is the point**.
-- Hardware: **Pi 4 only, text-only** (no peripherals).
+- Hardware: **Pi 4 (4GB) only, text-only** (no peripherals).
 - Effort: **uncapped — optimize for standout**.
 - Angle: **Both — product + rigor**.
 - Concept: **Approach A — Private RAG appliance backed by an inference lab** (chosen over a pure benchmark leaderboard and a self-hosted copilot).
