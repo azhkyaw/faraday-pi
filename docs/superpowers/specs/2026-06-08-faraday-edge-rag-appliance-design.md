@@ -96,7 +96,7 @@ Each component has one clear purpose, a defined interface, and explicit dependen
 
 ### 6.3 `orchestrator` (FastAPI app — the brain + serving surface)
 - **Purpose**: the RAG control flow and the HTTP API.
-- **Interface (HTTP)**: `POST /chat` (SSE stream of answer + sources); OpenAI-compatible `POST /v1/chat/completions`; `GET /healthz`; `GET /metrics`.
+- **Interface (HTTP)**: `POST /chat` (SSE stream of answer + sources) and OpenAI-compatible `POST /v1/chat/completions` — **both RAG-grounded** (retrieval + citations), so editors/tools can consume the appliance via a standard client; `GET /healthz`; `GET /metrics`. Raw, *ungrounded* model access (for benchmarking) goes directly to the llama-server instance, not through this API.
 - **Depends on**: `retriever`, `embedder`, `llm_server`, `prompt_builder`, `citation_verifier`, `llm_client`.
 - **Sub-units**:
   - `prompt_builder` — assembles grounded prompt: retrieved context + instructions + a **GBNF citation grammar** forcing valid JSON citations.
@@ -104,8 +104,8 @@ Each component has one clear purpose, a defined interface, and explicit dependen
   - `citation_verifier` — validates that every cited chunk ID exists and was actually retrieved (anti-hallucination guardrail).
 
 ### 6.4 `llm_server` (deployment unit, not our code)
-- **Purpose**: host generation + embedding models with an OpenAI-compatible API.
-- **Implementation**: `llama.cpp`'s `llama-server`, built from source with ARM NEON / optimization flags. Config-managed: model path, quant, thread count, KV-cache settings, grammar support.
+- **Purpose**: serve the generation model and the embedding model over an OpenAI-compatible API.
+- **Implementation**: `llama.cpp`'s `llama-server`, built from source with ARM NEON / optimization flags. Because one process serves one model, generation and embeddings run as **two separate `llama-server` instances** (the embedding instance launched with `--embedding`); both sit behind the orchestrator. Config-managed: model path, quant, thread count, KV-cache settings, grammar support. The bench harness may also hit a raw generation instance directly (bypassing retrieval) for model-only benchmarks.
 
 ### 6.5 `web_ui` (minimal SPA)
 - **Purpose**: chat with streaming tokens, show source citations, select a collection.
