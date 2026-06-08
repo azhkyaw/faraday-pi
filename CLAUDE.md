@@ -50,10 +50,12 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
   benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
-- **Don't tether the Pi app/servers to an SSH session** — a held-open or `nohup … &`
-  process dies when the connection drops. Durable start:
-  `setsid nohup faraday serve --host 0.0.0.0 --port 8000 >/tmp/app.log 2>&1 </dev/null &`.
-  A real fix (systemd unit, restart-on-crash, start-on-boot) is the M5 hardening item.
+- **The app/servers aren't daemons** — nothing auto-starts on boot, so after a Pi
+  reboot/power-cycle re-run `scripts/30_run_servers.sh` (+ start the app). To keep the app
+  alive after you close *your* SSH session, start it detached:
+  `setsid nohup faraday serve --host 0.0.0.0 --port 8000 >/tmp/app.log 2>&1 </dev/null &`
+  (this does NOT survive a Pi shutdown — only start-on-boot does). Start-on-boot +
+  restart-on-crash via a systemd unit is the M5 hardening item.
 
 ## State
 

@@ -38,7 +38,7 @@ Pi /chat (2 requests) → app /metrics → Prometheus (3 targets UP) → Grafana
 
 ## Process notes (recurring lesson)
 
-Inline commands with nested quotes do **not** survive PowerShell→ssh→bash; this session hit it repeatedly (json validation, version prints, `pkill` self-match). Reliable patterns: committed `.sh`/`.py` files, filename args (`python -m json.tool <file>`), piping a file to `python3 -`, and the `[f]araday` bracket trick to avoid `pkill` self-match. Long-running Pi processes are best held by an attached background task, not `nohup … &` over a one-shot ssh.
+Inline commands with nested quotes do **not** survive PowerShell→ssh→bash; this session hit it repeatedly (json validation, version prints, `pkill` self-match). Reliable patterns: committed `.sh`/`.py` files, filename args (`python -m json.tool <file>`), piping a file to `python3 -`, and the `[f]araday` bracket trick to avoid `pkill` self-match. To keep a long-running Pi process alive after closing your ssh session, detach it (`setsid nohup … </dev/null &`); note nothing survives a Pi reboot/shutdown without start-on-boot (systemd — M5). (Correction: app "drops" seen this session were a deliberate `pkill` and a manual Pi shutdown, not ssh-tether fragility — don't over-read them.)
 
 ## Lint note
 
