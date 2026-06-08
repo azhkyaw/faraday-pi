@@ -18,6 +18,8 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - `pi@raspberrypi.local` (LAN IP `192.168.100.59`); SSH key auth + passwordless sudo set up.
 - venv `~/faraday/.venv` (`pip install -e ".[dev]"`); llama.cpp at `~/llama.cpp/build/bin/`.
 - Ports: gen llama-server `:8080`, embed `:8081`, FastAPI app `:8000`.
+- Models in `~/faraday/models`: Qwen2.5-1.5B-Instruct Q4_K_M (gen) + bge-small-en-v1.5 f16
+  (embed, 384-dim). Default model is 1.5B for the 4GB board; 3B is M4-exploratory only.
 - Run: `scripts/30_run_servers.sh` (servers), `40_smoke_test.sh` (health), `60_run_app.sh`
   (web app); `faraday ingest|ask|serve` (CLI); monitoring via
   `docker compose -f monitoring/docker-compose.yml up -d` (dev machine, Docker).
@@ -48,6 +50,10 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
   benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
+- **Don't tether the Pi app/servers to an SSH session** — a held-open or `nohup … &`
+  process dies when the connection drops. Durable start:
+  `setsid nohup faraday serve --host 0.0.0.0 --port 8000 >/tmp/app.log 2>&1 </dev/null &`.
+  A real fix (systemd unit, restart-on-crash, start-on-boot) is the M5 hardening item.
 
 ## State
 
