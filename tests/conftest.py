@@ -33,6 +33,12 @@ class FakeLLM:
         self.last_messages = messages
         return self.reply
 
+    def stream(self, messages: list[dict], max_tokens: int = 512):
+        self.last_messages = messages
+        mid = len(self.reply) // 2          # two chunks that rejoin to the exact reply
+        yield self.reply[:mid]
+        yield self.reply[mid:]
+
 
 @pytest.fixture
 def fake_embedder():
