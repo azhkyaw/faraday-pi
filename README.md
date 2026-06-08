@@ -4,7 +4,7 @@
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
-> **Status:** 🟢 **M0–M2 complete** — a local RAG appliance answering cited questions fully offline, via CLI **and** a token-streaming web chat (32 tests green, proven on hardware).  🚧 **M3 next** — observability.
+> **Status:** 🟢 **M0–M3 complete** — a local RAG appliance answering cited questions fully offline (CLI + token-streaming web chat), with a live Prometheus/Grafana dashboard (40 tests green, proven on hardware).  🚧 **M4 next** — the inference lab.
 
 ## Why it's interesting
 
@@ -16,7 +16,7 @@ Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspber
 
 - **Raspberry Pi 4 (4 GB)** · Cortex-A72 · Raspberry Pi OS Lite 64-bit (Debian 13)
 - **llama.cpp** (CPU inference, NEON) serving **Qwen2.5-1.5B-Instruct** (Q4_K_M) + **bge-small-en-v1.5** embeddings
-- **sqlite-vec** single-file vector store · **FastAPI** (M2) · **Python 3.13**
+- **sqlite-vec** single-file vector store · **FastAPI** (M2) · **Prometheus + Grafana** (M3) · **Python 3.13**
 
 ## Validated baseline (M0)
 
@@ -58,14 +58,28 @@ bash scripts/60_run_app.sh         # serves on 0.0.0.0:8000
 
 The web app streams the answer token-by-token over SSE (`sources` → `token` → `done`), shows the retrieved sources with scores, and flags any hallucinated citations — all fully offline.
 
+### Live monitoring (M3)
+
+The Pi exposes Prometheus metrics (RAG: TTFT, decode tok/s, retrieval latency, citation validity; host: CPU temp, throttle, llama-server RSS) at `:8000/metrics`, plus the llama-servers' native metrics. Prometheus + Grafana run **off-Pi** (keeping the 4 GB budget free) via Docker Compose:
+
+```bash
+# on the dev machine, with Docker running:
+docker compose -f monitoring/docker-compose.yml up -d
+#   Prometheus targets → http://localhost:9090/targets   (all three UP)
+#   Grafana dashboard  → http://localhost:3000           ("Faraday")
+```
+
+The dashboard renders the exact numbers Faraday previously measured by hand — TTFT, decode tok/s, Pi temp, RSS, hallucination counts — now continuous. See [`monitoring/README.md`](monitoring/README.md) (set your Pi's LAN IP in `prometheus.yml`; mDNS `.local` doesn't resolve inside containers).
+
 ## Repo layout
 
 ```
 docs/superpowers/specs/   design specs (the "what & why")
-docs/superpowers/plans/   implementation plans + M0/M1/M2 as-built records
+docs/superpowers/plans/   implementation plans + M0–M3 as-built records
 scripts/                  reproducible runbook (00 → 60: bring-up + run app)
+monitoring/               off-Pi Prometheus + Grafana stack (Docker Compose)
 results/                  benchmark + eval results
-src/faraday/              the RAG application (engine, CLI, server, web UI)
+src/faraday/              the RAG application (engine, CLI, server, web UI, metrics)
 ```
 
 ## Dev workflow
@@ -79,13 +93,13 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 | **M0** | Bring-up: provisioning, llama.cpp build, local serving, validated baseline | ✅ |
 | **M1** | RAG core: ingest → retrieve → ground → answer → verify-citations (CLI) | ✅ |
 | **M2** | Serving: FastAPI + SSE token streaming + web chat UI | ✅ |
-| **M3** | Observability: Prometheus + Grafana | 🚧 |
-| **M4** | The lab: quantization sweep, RAG evals, optimization study, GBNF citations | |
+| **M3** | Observability: Prometheus + Grafana (RAG + host metrics) | ✅ |
+| **M4** | The lab: quantization sweep, RAG evals, optimization study, GBNF citations | 🚧 |
 | **M5** | Polish: technical report, demo, hardening | |
 
 ## Design docs
 
 - [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — full architecture & methodology
-- [M2 serving spec](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) — streaming web layer
-- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md)
-- As-built & findings: [M0](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md) · [M1](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-as-built.md)
+- Milestone specs: [M2 serving](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) · [M3 observability](docs/superpowers/specs/2026-06-09-faraday-m3-observability-design.md)
+- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-observability.md)
+- As-built & findings: [M0](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md) · [M1](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-as-built.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-as-built.md)

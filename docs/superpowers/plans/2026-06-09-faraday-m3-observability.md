@@ -1,5 +1,7 @@
 # Faraday M3 — Observability Implementation Plan
 
+> **✅ STATUS: COMPLETE — merged to `main` and on GitHub.** 40 tests green; live Prometheus/Grafana dashboard verified with real traffic. See the [M3 as-built record](./2026-06-09-faraday-m3-as-built.md).
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Faraday observable — expose Prometheus metrics (RAG metrics + Pi host gauges) from the FastAPI app and native metrics from the llama-servers, and provide a committed off-Pi Prometheus + Grafana stack that scrapes the Pi and renders a live dashboard.
