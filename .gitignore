@@ -14,7 +14,7 @@ models/
 *.gguf
 *.bin
 data/
-corpus/
+/corpus/
 *.sqlite
 *.sqlite3
 *.db
