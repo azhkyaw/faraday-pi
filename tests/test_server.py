@@ -36,3 +36,10 @@ def test_chat_503_when_servers_down(monkeypatch):
     monkeypatch.setattr(server, "_preflight_ok", lambda settings: False)
     client = TestClient(server.app)
     assert client.get("/chat", params={"q": "x"}).status_code == 503
+
+
+def test_index_page_served():
+    client = TestClient(server.app)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "EventSource" in r.text and "Faraday" in r.text
