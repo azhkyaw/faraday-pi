@@ -6,7 +6,7 @@
 
 **Architecture:** Two local `llama-server` instances (generation + embeddings) expose OpenAI-compatible APIs on the Pi. A small Python package ingests documents → chunks → embeddings stored in a single-file `sqlite-vec` DB; at query time it retrieves top-k chunks, grounds a prompt, calls the local LLM, and verifies the returned citations point to real retrieved chunks. No network egress at serve time.
 
-**Tech Stack:** Raspberry Pi OS Lite 64-bit · llama.cpp (`llama-server`, `llama-bench`) · Qwen2.5-1.5B-Instruct (Q4_K_M GGUF) · bge-small-en-v1.5 (GGUF, 384-dim) · Python 3.11 · httpx · sqlite-vec · pypdf · typer · pytest · ruff
+**Tech Stack:** Raspberry Pi OS Lite 64-bit · llama.cpp (`llama-server`, `llama-bench`) · Qwen2.5-1.5B-Instruct (Q4_K_M GGUF) · bge-small-en-v1.5 (GGUF, 384-dim) · Python 3.13 · httpx · sqlite-vec · pypdf · typer · pytest · ruff
 
 ---
 
@@ -19,13 +19,14 @@
 
 ## Development Environment & Prerequisites
 
-**Assumed setup (adjust hostnames/paths to your reality):**
-- A Raspberry Pi 4 **(4GB)** with **Raspberry Pi OS Lite (64-bit, Bookworm)** flashed, on your network, **SSH enabled**, reachable as `pi@raspberrypi.local`. (If you prefer keyboard+monitor, run the `[on Pi]` commands directly in the Pi's terminal and skip `ssh`/`rsync`.)
-- This repo (`C:\projects\piai`, already git-initialized) is the **source of truth**, edited on your dev machine.
+**As-built setup (M0 verified on real hardware — see the [M0 as-built doc](./2026-06-08-faraday-m0-as-built.md)):**
+- A Raspberry Pi 4 **(4GB)** with **Raspberry Pi OS Lite (64-bit, Debian 13 "trixie", Python 3.13)** flashed, on your network, **SSH key auth + passwordless sudo** enabled, reachable as `pi@raspberrypi.local`.
+- This repo (`C:\projects\piai`, git-initialized) is the **source of truth**, edited on the Windows dev machine.
+- **Dev loop (develop-against-the-Pi):** author code on Windows → `git push pi` deploys it to the Pi's working tree → run `pytest`/servers on the Pi. Chosen because Windows + Python 3.13 can't cleanly load the `sqlite-vec` native extension, and the Pi is the real target anyway.
 - **Test split:**
-  - `[on dev machine]` — pure-Python unit tests (use fakes, no llama-server). Fast TDD loop. `sqlite-vec` runs here too, so the store/retriever are unit-testable locally.
-  - `[on Pi]` — anything needing `llama-server` (the integration test) and all hardware/benchmark steps.
-- Code reaches the Pi via `scripts/sync.sh` (rsync over SSH). No GitHub remote is required.
+  - **Pure-Python units** (fakes, no llama-server) — fast; run in the Pi venv.
+  - **`[on Pi]`** — `sqlite-vec`-backed tests, the integration test (needs `llama-server`), and all hardware/benchmark steps.
+- Code reaches the Pi via **`scripts/sync.ps1`** (`git push pi`, a repo with `receive.denyCurrentBranch=updateInstead`). No GitHub remote required.
 
 **Conventions in this plan:** Each step is tagged `[on dev machine]` or `[on Pi]`. Commits always happen in the repo on the dev machine. Shell commands are bash (use Git Bash / WSL on Windows, or the Pi's shell).
 
@@ -33,11 +34,13 @@
 
 ```
 scripts/
-  00_pi_setup.sh        # apt deps, zram/swap, CPU governor
-  10_build_llama.sh     # clone + cmake-build llama.cpp (NEON)
-  20_download_models.sh # fetch GGUF gen + embed models
-  30_run_servers.sh     # launch the two llama-server instances
-  sync.sh               # rsync repo → Pi
+  00_pi_setup.sh        # apt toolchain install (run on Pi)
+  10_build_llama.sh     # clone + cmake-build llama.cpp (NEON, -j3)
+  20_download_models.sh # fetch GGUF gen + embed models (venv + hf CLI)
+  30_run_servers.sh     # launch the two llama-server instances (nohup)
+  40_smoke_test.sh      # health-check + gen/embed API smoke test
+  50_mem_report.sh      # honest RSS/PSS memory diagnostic (vs free)
+  sync.ps1              # git-push repo → Pi (Windows/PowerShell)
 pyproject.toml          # package + deps + pytest/ruff config
 src/faraday/
   __init__.py
@@ -69,7 +72,9 @@ corpus/                   # your own private docs (gitignored)
 
 # Milestone M0 — Pi Bring-up
 
-> M0 produces committed, re-runnable scripts plus a recorded baseline. The "test" for each ops task is a verification command with expected output.
+> **✅ COMPLETED 2026-06-08.** Executed on real hardware. The authoritative record of *what was actually built* (commands, deviations, findings, validated numbers) is in **[2026-06-08-faraday-m0-as-built.md](./2026-06-08-faraday-m0-as-built.md)**. The task steps below are the original plan, preserved for provenance; where reality diverged (git-push sync, `hf` CLI, venv, NOPASSWD sudo, `-j3` build, added `40_`/`50_` scripts), the as-built doc is the source of truth.
+
+> M0 produces committed, re-runnable scripts (`00`→`50`) plus a recorded, throttle-validated baseline. The "test" for each ops task is a verification command with expected output.
 
 ### Task 0: Establish Pi access and system prep
 
