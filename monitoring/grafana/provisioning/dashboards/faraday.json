@@ -1,0 +1,46 @@
+{
+  "uid": "faraday",
+  "title": "Faraday",
+  "schemaVersion": 39,
+  "time": {"from": "now-30m", "to": "now"},
+  "refresh": "10s",
+  "panels": [
+    {"id": 1, "title": "TTFT (s)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+     "targets": [
+       {"expr": "histogram_quantile(0.5, rate(faraday_ttft_seconds_bucket[5m]))", "legendFormat": "p50"},
+       {"expr": "histogram_quantile(0.95, rate(faraday_ttft_seconds_bucket[5m]))", "legendFormat": "p95"}
+     ]},
+    {"id": 2, "title": "Decode tok/s (avg)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+     "targets": [
+       {"expr": "rate(faraday_decode_tps_sum[5m]) / rate(faraday_decode_tps_count[5m])", "legendFormat": "decode tok/s"}
+     ]},
+    {"id": 3, "title": "Retrieval (s, avg)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+     "targets": [
+       {"expr": "rate(faraday_retrieval_seconds_sum[5m]) / rate(faraday_retrieval_seconds_count[5m])", "legendFormat": "retrieval"}
+     ]},
+    {"id": 4, "title": "Requests/min + in-flight", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+     "targets": [
+       {"expr": "60 * rate(faraday_requests_total[5m])", "legendFormat": "{{outcome}}/min"},
+       {"expr": "faraday_requests_in_flight", "legendFormat": "in-flight"}
+     ]},
+    {"id": 5, "title": "Citations (valid vs invalid)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+     "targets": [
+       {"expr": "faraday_citations_total", "legendFormat": "{{validity}}"}
+     ]},
+    {"id": 6, "title": "Pi CPU temp (°C)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+     "fieldConfig": {"defaults": {"max": 90, "thresholds": {"mode": "absolute", "steps": [
+       {"color": "green", "value": null}, {"color": "red", "value": 80}]}}},
+     "targets": [
+       {"expr": "faraday_pi_temp_celsius", "legendFormat": "temp"}
+     ]},
+    {"id": 7, "title": "llama-server RSS (bytes)", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+     "targets": [
+       {"expr": "faraday_llama_rss_bytes", "legendFormat": "{{server}}"}
+     ]},
+    {"id": 8, "title": "Throttle / under-voltage", "type": "stat", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+     "targets": [
+       {"expr": "faraday_pi_throttled", "legendFormat": "throttled bitmask"},
+       {"expr": "faraday_pi_under_voltage", "legendFormat": "under-voltage"}
+     ]}
+  ]
+}
