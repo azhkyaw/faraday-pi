@@ -43,3 +43,23 @@ def test_index_page_served():
     r = client.get("/")
     assert r.status_code == 200
     assert "EventSource" in r.text and "Faraday" in r.text
+
+
+def test_metrics_endpoint_exposes_faraday_metrics():
+    client = TestClient(server.app)
+    body = client.get("/metrics").text
+    assert "faraday_requests" in body
+    assert "faraday_ttft_seconds" in body
+
+
+def test_chat_records_metrics(tmp_path, monkeypatch, fake_embedder, make_llm):
+    from faraday import metrics
+    engine, store = _engine(tmp_path, fake_embedder, make_llm, "Answer [1].")
+    monkeypatch.setattr(server, "make_engine", lambda settings: (engine, store))
+    monkeypatch.setattr(server, "_preflight_ok", lambda settings: True)
+    client = TestClient(server.app)
+
+    before = metrics.CITATIONS.labels(validity="valid")._value.get()
+    client.get("/chat", params={"q": "how much ram?"}).text
+    after = metrics.CITATIONS.labels(validity="valid")._value.get()
+    assert after == before + 1          # one valid citation ([1]) was recorded
