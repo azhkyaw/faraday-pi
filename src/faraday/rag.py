@@ -1,5 +1,7 @@
 from __future__ import annotations
+from typing import Iterator
 from faraday.citations import classify_citations
+from faraday.events import Event, SourcesEvent, TokenEvent, DoneEvent
 from faraday.llm_client import LLMClient
 from faraday.models import Answer
 from faraday.prompt import build_messages
@@ -21,3 +23,14 @@ class RagEngine:
         valid, invalid = classify_citations(text, n_sources=len(sources))
         return Answer(text=text, sources=sources,
                       cited_indices=valid, invalid_citations=invalid)
+
+    def answer_stream(self, query: str) -> Iterator[Event]:
+        sources = self.retriever.search(query, k=self.top_k)
+        yield SourcesEvent(sources)
+        messages = build_messages(query, sources)
+        parts: list[str] = []
+        for token in self.llm.stream(messages, max_tokens=self.max_tokens):
+            parts.append(token)
+            yield TokenEvent(token)
+        valid, invalid = classify_citations("".join(parts), n_sources=len(sources))
+        yield DoneEvent(cited_indices=valid, invalid_citations=invalid)
