@@ -41,5 +41,12 @@ def ask(question: str, db: str = Settings().db_path):
                     fg=typer.colors.RED)
 
 
+@app.command()
+def serve(host: str = "0.0.0.0", port: int = 8000):
+    """Run the Faraday web app (FastAPI + uvicorn)."""
+    import uvicorn
+    uvicorn.run("faraday.server:app", host=host, port=port)
+
+
 if __name__ == "__main__":
     app()
