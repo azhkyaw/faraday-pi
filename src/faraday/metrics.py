@@ -1,5 +1,9 @@
 from __future__ import annotations
+import re
+import subprocess
+from pathlib import Path
 from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client.core import GaugeMetricFamily
 
 # --- RAG metrics (updated by the server's /chat instrumentation) ---
 REQUESTS = Counter("faraday_requests", "Total /chat requests", ["outcome"])
@@ -14,11 +18,6 @@ DECODE_TPS = Histogram("faraday_decode_tps", "Decode tokens/sec per request",
 SOURCES_RETRIEVED = Histogram("faraday_sources_retrieved", "Sources returned per query",
                               buckets=(0, 1, 2, 3, 4, 5))
 CITATIONS = Counter("faraday_citations", "Citations by validity", ["validity"])
-
-
-import re
-import subprocess
-from pathlib import Path
 
 _UNDER_VOLT_BITS = 0x1 | 0x10000   # under-voltage now | under-voltage occurred
 
@@ -73,9 +72,6 @@ def read_host_gauges(temp_reader=_default_temp_reader,
     except Exception:
         g["faraday_llama_rss_bytes"] = {}
     return g
-
-
-from prometheus_client.core import GaugeMetricFamily
 
 
 class HostCollector:

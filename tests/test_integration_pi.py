@@ -72,7 +72,7 @@ def test_metrics_endpoint_after_chat(tmp_path, monkeypatch):
     client.get("/chat", params={"q": "How much RAM can a Raspberry Pi 4 have?"}).text
     body = client.get("/metrics").text
     print("\nMETRICS SAMPLE:\n" + "\n".join(
-        l for l in body.splitlines() if l.startswith("faraday_") and "pi_" in l))
+        line for line in body.splitlines() if line.startswith("faraday_") and "pi_" in line))
     assert "faraday_requests_total" in body
     assert "faraday_pi_temp_celsius" in body          # host collector live on the Pi
     assert "faraday_ttft_seconds_count" in body

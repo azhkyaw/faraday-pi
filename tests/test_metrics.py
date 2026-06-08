@@ -1,4 +1,6 @@
+from prometheus_client import CollectorRegistry
 from faraday import metrics
+from faraday.metrics import read_host_gauges, HostCollector
 
 
 def test_rag_metric_objects_exist_with_expected_names():
@@ -26,9 +28,6 @@ def test_in_flight_is_a_gauge_that_moves():
     assert metrics.IN_FLIGHT._value.get() == 0.0
 
 
-from faraday.metrics import read_host_gauges
-
-
 def test_host_gauges_parse_injected_readers():
     g = read_host_gauges(
         temp_reader=lambda: "48324\n",                 # millidegrees C
@@ -48,10 +47,6 @@ def test_host_gauges_skip_failing_readers():
                          rss_reader=lambda: {})
     assert "faraday_pi_temp_celsius" not in g     # failed read omitted, no crash
     assert g["faraday_llama_rss_bytes"] == {}
-
-
-from prometheus_client import CollectorRegistry
-from faraday.metrics import HostCollector
 
 
 def test_host_collector_yields_prometheus_metrics():
