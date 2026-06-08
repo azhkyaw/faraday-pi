@@ -4,7 +4,7 @@
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
-> **Status:** 🟢 **M0 + M1 complete** — a local RAG appliance answering cited questions fully offline (22 tests green, proven on hardware).  🚧 **M2 next** — serving + web UI.
+> **Status:** 🟢 **M0–M2 complete** — a local RAG appliance answering cited questions fully offline, via CLI **and** a token-streaming web chat (32 tests green, proven on hardware).  🚧 **M3 next** — observability.
 
 ## Why it's interesting
 
@@ -41,14 +41,31 @@ bash scripts/30_run_servers.sh     # launch gen :8080 + embed :8081
 bash scripts/40_smoke_test.sh      # verify both APIs respond
 ```
 
+## Use it
+
+Once the llama-servers are up (`scripts/30_run_servers.sh`), index documents and ask — two interfaces over the same offline RAG core:
+
+```bash
+# CLI (M1)
+faraday ingest examples/corpus
+faraday ask "What CPU does the Raspberry Pi 4 use?"
+#   → "...a quad-core ARM Cortex-A72 (64-bit) CPU. [1]"  Sources: [1] pi-facts.md (0.855)
+
+# Web app (M2) — token-streaming chat with live sources
+bash scripts/60_run_app.sh         # serves on 0.0.0.0:8000
+#   then open http://raspberrypi.local:8000 in a browser
+```
+
+The web app streams the answer token-by-token over SSE (`sources` → `token` → `done`), shows the retrieved sources with scores, and flags any hallucinated citations — all fully offline.
+
 ## Repo layout
 
 ```
-docs/superpowers/specs/   design spec (the "what & why")
-docs/superpowers/plans/   implementation plan + M0 as-built record
-scripts/                  reproducible bring-up runbook (00 → 50)
+docs/superpowers/specs/   design specs (the "what & why")
+docs/superpowers/plans/   implementation plans + M0/M1/M2 as-built records
+scripts/                  reproducible runbook (00 → 60: bring-up + run app)
 results/                  benchmark + eval results
-src/faraday/              the RAG application (M1+)
+src/faraday/              the RAG application (engine, CLI, server, web UI)
 ```
 
 ## Dev workflow
@@ -61,14 +78,14 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 |---|---|---|
 | **M0** | Bring-up: provisioning, llama.cpp build, local serving, validated baseline | ✅ |
 | **M1** | RAG core: ingest → retrieve → ground → answer → verify-citations (CLI) | ✅ |
-| **M2** | Serving: FastAPI + SSE + web UI + grammar-structured citations | 🚧 |
-| **M3** | Observability: Prometheus + Grafana | |
-| **M4** | The lab: quantization sweep, RAG evals, optimization study | |
+| **M2** | Serving: FastAPI + SSE token streaming + web chat UI | ✅ |
+| **M3** | Observability: Prometheus + Grafana | 🚧 |
+| **M4** | The lab: quantization sweep, RAG evals, optimization study, GBNF citations | |
 | **M5** | Polish: technical report, demo, hardening | |
 
 ## Design docs
 
 - [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — full architecture & methodology
-- [Implementation plan (M0–M1)](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md)
-- [M0 as-built & findings](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md)
-- [M1 as-built & findings](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md)
+- [M2 serving spec](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) — streaming web layer
+- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md)
+- As-built & findings: [M0](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md) · [M1](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-as-built.md)

@@ -1,5 +1,7 @@
 # Faraday M2 — Streaming Web Serving Layer Implementation Plan
 
+> **✅ STATUS: COMPLETE — merged to `main` and on GitHub.** 32 tests green; streaming web chat proven offline on hardware. See the [M2 as-built record](./2026-06-09-faraday-m2-as-built.md).
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wrap the M1 `RagEngine` in a FastAPI service that streams grounded, cited answers token-by-token over SSE to a minimal vanilla-JS web chat, fully offline.
