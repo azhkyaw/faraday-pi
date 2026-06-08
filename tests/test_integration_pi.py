@@ -54,3 +54,25 @@ def test_chat_endpoint_streams_grounded_answer(tmp_path, monkeypatch):
     print("\nSTREAMED ANSWER:", answer)
     assert "event: done" in body
     assert "8gb" in answer.lower() or "8 gb" in answer.lower()
+
+
+@pytest.mark.integration
+def test_metrics_endpoint_after_chat(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from faraday import server
+
+    db = str(tmp_path / "m.sqlite")
+    monkeypatch.setenv("FARADAY_DB", db)
+    s = Settings.from_env()
+    store = SqliteVecStore(db, dim=s.embed_dim)
+    ingest("examples/corpus", store=store, embedder=HttpEmbedder(s))
+    store.close()
+
+    client = TestClient(server.app)
+    client.get("/chat", params={"q": "How much RAM can a Raspberry Pi 4 have?"}).text
+    body = client.get("/metrics").text
+    print("\nMETRICS SAMPLE:\n" + "\n".join(
+        l for l in body.splitlines() if l.startswith("faraday_") and "pi_" in l))
+    assert "faraday_requests_total" in body
+    assert "faraday_pi_temp_celsius" in body          # host collector live on the Pi
+    assert "faraday_ttft_seconds_count" in body
