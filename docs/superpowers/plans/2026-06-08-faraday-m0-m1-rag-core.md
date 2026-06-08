@@ -1,5 +1,7 @@
 # Faraday — Plan 1: Bring-up + RAG Core (M0–M1) Implementation Plan
 
+> **✅ STATUS: COMPLETE — merged to `main`.** Both milestones shipped; see the as-built records: [M0](./2026-06-08-faraday-m0-as-built.md) · [M1](./2026-06-08-faraday-m1-as-built.md). 22 tests green, appliance proven offline on hardware.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up a Raspberry Pi 4 (4GB) running local llama.cpp inference, then build a fully-offline CLI that answers natural-language questions about a user's documents with verifiable citations.

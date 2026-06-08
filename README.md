@@ -4,7 +4,7 @@
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
-> **Status:** 🟢 **M0 complete** — bring-up + local LLM serving, validated on hardware.  🚧 **M1 in progress** — the RAG core.
+> **Status:** 🟢 **M0 + M1 complete** — a local RAG appliance answering cited questions fully offline (22 tests green, proven on hardware).  🚧 **M2 next** — serving + web UI.
 
 ## Why it's interesting
 
@@ -60,8 +60,8 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 | | Milestone | |
 |---|---|---|
 | **M0** | Bring-up: provisioning, llama.cpp build, local serving, validated baseline | ✅ |
-| **M1** | RAG core: ingest → retrieve → ground → answer → verify-citations (CLI) | 🚧 |
-| **M2** | Serving: FastAPI + SSE + web UI + grammar-structured citations | |
+| **M1** | RAG core: ingest → retrieve → ground → answer → verify-citations (CLI) | ✅ |
+| **M2** | Serving: FastAPI + SSE + web UI + grammar-structured citations | 🚧 |
 | **M3** | Observability: Prometheus + Grafana | |
 | **M4** | The lab: quantization sweep, RAG evals, optimization study | |
 | **M5** | Polish: technical report, demo, hardening | |
@@ -71,3 +71,4 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 - [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — full architecture & methodology
 - [Implementation plan (M0–M1)](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md)
 - [M0 as-built & findings](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md)
+- [M1 as-built & findings](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md)
