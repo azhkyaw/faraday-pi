@@ -16,11 +16,11 @@ EMB="$(ls "$M"/*f16.gguf | head -1)"
 pkill -f 'llama-server' 2>/dev/null || true
 sleep 1
 
-nohup "$BIN" -m "$GEN" -c 4096 -t "$THREADS" --host 0.0.0.0 --port 8080 \
+nohup "$BIN" -m "$GEN" -c 4096 -t "$THREADS" --metrics --host 0.0.0.0 --port 8080 \
   >/tmp/gen.log 2>&1 &
 echo "gen   server pid $! (:8080)  model: $(basename "$GEN")"
 
-nohup "$BIN" -m "$EMB" --embeddings -t "$THREADS" --host 0.0.0.0 --port 8081 \
+nohup "$BIN" -m "$EMB" --embeddings --metrics -t "$THREADS" --host 0.0.0.0 --port 8081 \
   >/tmp/embed.log 2>&1 &
 echo "embed server pid $! (:8081)  model: $(basename "$EMB")"
 
