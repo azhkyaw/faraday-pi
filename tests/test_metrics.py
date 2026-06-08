@@ -48,3 +48,21 @@ def test_host_gauges_skip_failing_readers():
                          rss_reader=lambda: {})
     assert "faraday_pi_temp_celsius" not in g     # failed read omitted, no crash
     assert g["faraday_llama_rss_bytes"] == {}
+
+
+from prometheus_client import CollectorRegistry
+from faraday.metrics import HostCollector
+
+
+def test_host_collector_yields_prometheus_metrics():
+    reg = CollectorRegistry()
+    reg.register(HostCollector(
+        temp_reader=lambda: "50000\n",
+        throttled_reader=lambda: "throttled=0x0",
+        rss_reader=lambda: {"gen": 1000, "embed": 200},
+    ))
+    sample = {m.name: m for m in reg.collect()}
+    assert sample["faraday_pi_temp_celsius"].samples[0].value == 50.0
+    assert sample["faraday_pi_throttled"].samples[0].value == 0.0
+    rss = {s.labels["server"]: s.value for s in sample["faraday_llama_rss_bytes"].samples}
+    assert rss == {"gen": 1000.0, "embed": 200.0}

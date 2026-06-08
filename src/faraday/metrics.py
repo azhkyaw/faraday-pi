@@ -73,3 +73,29 @@ def read_host_gauges(temp_reader=_default_temp_reader,
     except Exception:
         g["faraday_llama_rss_bytes"] = {}
     return g
+
+
+from prometheus_client.core import GaugeMetricFamily
+
+
+class HostCollector:
+    """A custom Prometheus collector that reads Pi host gauges lazily on each scrape."""
+
+    def __init__(self, temp_reader=_default_temp_reader,
+                 throttled_reader=_default_throttled_reader,
+                 rss_reader=_default_rss_reader):
+        self._readers = (temp_reader, throttled_reader, rss_reader)
+
+    def collect(self):
+        g = read_host_gauges(*self._readers)
+        for name in ("faraday_pi_temp_celsius", "faraday_pi_throttled",
+                     "faraday_pi_under_voltage"):
+            if name in g:
+                yield GaugeMetricFamily(name, name.replace("_", " "), value=g[name])
+        rss = g.get("faraday_llama_rss_bytes", {})
+        if rss:
+            fam = GaugeMetricFamily("faraday_llama_rss_bytes",
+                                    "llama-server resident memory", labels=["server"])
+            for server, value in rss.items():
+                fam.add_metric([server], value)
+            yield fam
