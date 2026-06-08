@@ -11,14 +11,14 @@ cd "$HOME/faraday"
 # shellcheck disable=SC1091
 . .venv/bin/activate
 pip install -q --upgrade pip
-pip install -q "huggingface-hub[cli]"
+pip install -q "huggingface-hub"   # provides the `hf` CLI (v1.x removed `huggingface-cli`)
 
 mkdir -p models
 # Generation model (~1.0 GB): Qwen2.5-1.5B-Instruct, Q4_K_M.
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
+hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
   --include "*q4_k_m.gguf" --local-dir models
 # Embedding model (~130 MB): bge-small-en-v1.5, f16 (quality matters for retrieval).
-huggingface-cli download CompendiumLabs/bge-small-en-v1.5-gguf \
+hf download CompendiumLabs/bge-small-en-v1.5-gguf \
   --include "*f16.gguf" --local-dir models
 
 echo "--- models ---"
