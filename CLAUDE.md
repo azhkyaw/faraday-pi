@@ -21,8 +21,9 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - Models in `~/faraday/models`: Qwen2.5-1.5B-Instruct Q4_K_M (gen) + bge-small-en-v1.5 f16
   (embed, 384-dim). Default model is 1.5B for the 4GB board; 3B is M4-exploratory only.
 - Run: `scripts/30_run_servers.sh` (servers), `40_smoke_test.sh` (health), `60_run_app.sh`
-  (web app); `faraday ingest|ask|serve` (CLI); monitoring via
-  `docker compose -f monitoring/docker-compose.yml up -d` (dev machine, Docker).
+  (web app), `70_quant_sweep.sh` (M4a quant sweep, on the Pi); `faraday ingest|ask|serve`
+  (CLI); monitoring via `docker compose -f monitoring/docker-compose.yml up -d` (dev
+  machine, Docker).
 
 ## Conventions
 
@@ -47,6 +48,9 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Long-running Pi processes serve stale code** until restarted (`git push` updates files,
   not a running process's memory) — restart `faraday serve` after server changes.
 - **Build llama.cpp with `-j3`, not `-j4`** — four parallel compilers OOM the 4GB board.
+- **The Pi's llama.cpp build has only `llama-bench`/`-cli`/`-server`**, not
+  `llama-perplexity` (M4a's quality axis needs it). Build a missing tool against the
+  existing libs: `cmake --build ~/llama.cpp/build --target llama-perplexity -j3`.
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
   benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
@@ -59,5 +63,8 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 
 ## State
 
-M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability); M4 (the
-inference lab) next. Per-milestone detail in `docs/superpowers/`.
+M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4a**
+(quantization sweep) harness built, tested, on `main` — but the ~8–10 h overnight sweep is
+**unrun**: launch `scripts/70_quant_sweep.sh` on the Pi, then commit
+`results/sweep/{sweep.csv,frontier.png,leaderboard.md,findings.md}`. M4b (RAG evals) + M4c
+(optimization) next. Per-milestone detail in `docs/superpowers/`.
