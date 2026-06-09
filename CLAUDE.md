@@ -63,8 +63,19 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 
 ## State
 
-M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4a**
-(quantization sweep) harness built, tested, on `main` — but the ~8–10 h overnight sweep is
-**unrun**: launch `scripts/70_quant_sweep.sh` on the Pi, then commit
-`results/sweep/{sweep.csv,frontier.png,leaderboard.md,findings.md}`. M4b (RAG evals) + M4c
-(optimization) next. Per-milestone detail in `docs/superpowers/`.
+M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4** (the
+inference lab) in progress, all on `main`:
+
+- **M4a quant sweep** — harness + **core run done** (12 cells, 0.5B+1.5B); the
+  quality/footprint Pareto frontier is final (knee = 1.5B Q4_K_M/Q5_K_M). A clean **re-run is
+  unblocked** (proper PSU now verified — the old run under-volt-throttled the speed column and
+  deferred the 3B row): `rm results/sweep/sweep.csv results/sweep/raw/*` then
+  `scripts/70_quant_sweep.sh` → clean 18-cell speed + 3B, then refresh `findings.md`.
+- **M4b RAG evals** — the `faraday.eval` engine (dataset · metrics recall@k/MRR/citation/
+  abstention · Claude-as-judge · resumable runner · scorecard+ablation report) is built+tested
+  (69 tests). **Plan 2 pending**: themed Wikipedia corpus + Claude-drafted golden set +
+  `scripts/80_run_evals.sh` + live Pi run + findings.
+- **M4c optimization** — not yet designed.
+
+Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. M5 = systemd/Docker
+packaging + security hardening.
