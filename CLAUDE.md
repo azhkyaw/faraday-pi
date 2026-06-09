@@ -73,9 +73,13 @@ inference lab) in progress, all on `main`:
   `scripts/70_quant_sweep.sh` → clean 18-cell speed + 3B, then refresh `findings.md`.
 - **M4b RAG evals** — the `faraday.eval` engine (dataset · metrics recall@k/MRR/citation/
   abstention · Claude-as-judge · resumable runner · scorecard+ablation report) is built+tested
-  (69 tests). **Plan 2 pending**: themed Wikipedia corpus + Claude-drafted golden set +
-  `scripts/80_run_evals.sh` + live Pi run + findings.
+  (69 tests). **Plan 2 written (`bf87672`) but unexecuted**: Apollo-era corpus fetcher +
+  Claude golden-set generator + `runner.run`/`scripts/80_run_evals.sh` + `report.main`. Its
+  code tasks run inline anytime; the **data tasks need `ANTHROPIC_API_KEY`** (Claude draft +
+  judge) + golden-set curation + a ~3–4 h Pi run (judge at the baseline config only).
 - **M4c optimization** — not yet designed.
 
-Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. M5 = systemd/Docker
-packaging + security hardening.
+Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
+"polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,
+**plus** hardening (systemd auto-start/restart-on-crash — the M3 stale-process fix — Docker
+packaging, security) + the GBNF citations deferred from M2.
