@@ -86,4 +86,7 @@ inference lab) in progress, all on `main`:
 Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
 "polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,
 **plus** hardening (systemd auto-start/restart-on-crash — the M3 stale-process fix — Docker
-packaging, security) + the GBNF citations deferred from M2.
+packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
+(spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
+never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
+project is execute-only**: M4a closeout → M4b verify+run → M4c run → M5.
