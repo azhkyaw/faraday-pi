@@ -33,8 +33,9 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Integration tests**: `@pytest.mark.integration` (deselected by default); run on the Pi
   with servers up via `pytest -m integration`.
 - **Commits**: conventional (`feat(m3): …`), end with
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Work on a feature branch;
-  don't commit milestone work straight to `main`.
+  `Co-Authored-By: Claude <noreply@anthropic.com>` (model-agnostic — the project has been
+  built across model/account switches). Work on a feature branch; don't commit milestone
+  work straight to `main`.
 - **Architecture**: components depend on `Protocol`s (`Embedder`, `LLMClient`) — real HTTP
   impls injected by `cli.py`/`server.py`, fakes by tests. Streaming flows through a
   `Sources`→`Token`→`Done` event seam (also the metrics instrumentation point).
@@ -76,9 +77,11 @@ inference lab) in progress, all on `main`:
   batch-verify once the sweep frees the board): corpus fetcher + Claude golden-set generator +
   `runner.run`/`scripts/80_run_evals.sh` + `report.main`. The **data tasks still need
   `ANTHROPIC_API_KEY`** (Claude draft + judge) + golden-set curation + a ~3–4 h Pi run.
-- **M4c optimization** — **spec committed (`fbdbf51`); pending plan.** Ablate-then-stack
-  tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock) + speculative
-  decoding + Ollama baseline + TTFT-vs-context, on 1.5B Q4_K_M, extending `faraday.bench`.
+- **M4c optimization** — **fully designed: spec (`fbdbf51`) + plan (`35ae99a`); pending
+  execution** (needs a quiet board — sequence after the M4a closeout + M4b run).
+  Ablate-then-stack tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock)
+  + speculative decoding + Ollama baseline + TTFT-vs-context, on 1.5B Q4_K_M, extending
+  `faraday.bench`.
 
 Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
 "polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,

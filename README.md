@@ -4,7 +4,7 @@
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
-> **Status:** 🟢 **M0–M3 complete** — a local RAG appliance answering cited questions fully offline (CLI + token-streaming web chat), with a live Prometheus/Grafana dashboard (40 tests green, proven on hardware).  🚧 **M4 next** — the inference lab.
+> **Status:** 🟢 **M0–M3 complete** — a local RAG appliance answering cited questions fully offline (CLI + token-streaming web chat), with a live Prometheus/Grafana dashboard (69 tests green, proven on hardware).  🚧 **M4 in progress** — the inference lab: the [quant-sweep frontier](results/sweep/findings.md) is measured (verdict: run **1.5B Q4_K_M** on a 4 GB Pi), the RAG-eval engine is merged, and the optimization study is designed.
 
 ## Why it's interesting
 
@@ -100,6 +100,7 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 ## Design docs
 
 - [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — full architecture & methodology
-- Milestone specs: [M2 serving](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) · [M3 observability](docs/superpowers/specs/2026-06-09-faraday-m3-observability-design.md)
-- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-observability.md)
+- Milestone specs: [M2 serving](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) · [M3 observability](docs/superpowers/specs/2026-06-09-faraday-m3-observability-design.md) · [M4a quant sweep](docs/superpowers/specs/2026-06-09-faraday-m4a-quant-sweep-design.md) · [M4b RAG evals](docs/superpowers/specs/2026-06-10-faraday-m4b-rag-evals-design.md) · [M4c optimization](docs/superpowers/specs/2026-06-10-faraday-m4c-optimization-design.md)
+- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-observability.md) · [M4a](docs/superpowers/plans/2026-06-09-faraday-m4a-quant-sweep.md) · [M4b engine](docs/superpowers/plans/2026-06-10-faraday-m4b-rag-eval-engine.md) · [M4b data+run](docs/superpowers/plans/2026-06-10-faraday-m4b-rag-eval-data-and-run.md) · [M4c](docs/superpowers/plans/2026-06-10-faraday-m4c-optimization.md)
+- First results: [M4a sweep findings](results/sweep/findings.md) — the quality-vs-footprint frontier + Pi-4 leaderboard
 - As-built & findings: [M0](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md) · [M1](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-as-built.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-as-built.md)
