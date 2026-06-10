@@ -1,8 +1,9 @@
 # Faraday — M4a As-Built & Findings (harness)
 
-**Status:** ✅ Harness complete — merged to `main` (`51a1a67`) and on GitHub. ⏳ The 18-cell
-sweep is **unrun**; `results/sweep/{sweep.csv,frontier.png,leaderboard.md,findings.md}` and
-the "M4a complete" sign-off follow the overnight run.
+**Status:** ✅ **M4a complete & signed off (2026-06-10).** Harness merged to `main`
+(`51a1a67`); the sweep ran twice — a 12-cell core run on a marginal PSU (`653eff6`) and,
+after the PSU fix, the final clean **18-cell** run — final artifacts + findings in
+[`results/sweep/`](../../../results/sweep/findings.md).
 **Plan:** [2026-06-09-faraday-m4a-quant-sweep.md](./2026-06-09-faraday-m4a-quant-sweep.md)
 **Spec:** [2026-06-09-faraday-m4a-quant-sweep-design.md](../specs/2026-06-09-faraday-m4a-quant-sweep-design.md)
 
@@ -72,7 +73,16 @@ The plan was authored fully off-Pi; only the smoke + (pending) sweep need hardwa
 plan-vs-reality gap (finding #1) was assumed-present-but-absent — caught at the prereq
 gate, the cheapest possible place.
 
-**Next:** run `scripts/70_quant_sweep.sh` (overnight, resumable) → commit the frontier +
-`findings.md` (the knee, quant cliffs, the 4 GB wall, what to actually run on a 4 GB Pi) →
-sign off M4a. Then M4c (optimization waterfall: governor/overclock/KV-cache/flash-attn/
-speculative; the TTFT-vs-context + prefill-rate leads) and M4b (RAG evals).
+## Sweep run record (added at sign-off, 2026-06-10)
+
+Two runs. The **core run** (12 cells, 0.5B+1.5B) hit intermittent under-voltage throttling
+on a marginal PSU — quality/footprint published as final (clock-independent), speed flagged
+preliminary, 3B deferred. After a verified PSU swap, the **clean 18-cell run** held
+`get_throttled=0x0` across ~15 h (3B = 61% of wall-clock), **reproduced all 12 core
+perplexities exactly and core speeds within ~2%**, and completed the 3B rows. Headlines:
+knee = **1.5B Q4_K_M**; decode bandwidth-bound at ≈3.8 GB/s effective (measured 18 ways);
+prefill kernel-bound (Q8_0/Q4_K_M fastest); 3B fits in RAM but fails interactivity, and is
+broken below Q4_K_M. Full story: [`results/sweep/findings.md`](../../../results/sweep/findings.md).
+
+**Next:** M4b batch-verify + data run (`m4b-eval-data-run` branch), then M4c (the
+optimization waterfall — where the TTFT-vs-context + prefill-rate leads now live), then M5.
