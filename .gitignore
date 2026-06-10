@@ -23,6 +23,13 @@ data/
 results/raw/
 *.log
 
+# M4b eval: ignore raw run rows, frozen judge caches, the draft, and scratch stores;
+# keep golden.jsonl, scorecard.md, ablations.png, findings.md, SOURCES.md.
+results/evals/raw/
+results/evals/judge/
+results/evals/golden_draft.jsonl
+results/evals/store_*.sqlite
+
 # Environment / secrets
 .env
 *.local
