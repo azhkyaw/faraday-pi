@@ -60,10 +60,11 @@ measurement.
 
 Three units, installed by the bootstrap and checked into the repo:
 
-- `faraday-llama-gen.service` — llama-server :8080 (gen model), `Restart=on-failure`.
+- `faraday-llama-gen.service` — llama-server :8080 (gen model), `Restart=on-failure`,
+  `ExecStartPre` = the memory-guard preflight (§4.2 — it gates the unit that actually
+  loads the big model, and its env-file fallback feeds this unit's `ExecStart`).
 - `faraday-llama-embed.service` — llama-server :8081 (embeddings), `Restart=on-failure`.
-- `faraday-app.service` — `faraday serve` :8000, `After=`/`Wants=` both server units,
-  `ExecStartPre` = the memory-guard preflight (§4.2).
+- `faraday-app.service` — `faraday serve` :8000, `After=`/`Wants=` both server units.
 
 All three: `WantedBy=multi-user.target` (start on boot) + lightweight sandboxing
 (`NoNewPrivileges=yes`, `ProtectSystem=full`, `PrivateTmp=yes`) — this is the M5 "security"
