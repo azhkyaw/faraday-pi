@@ -66,18 +66,19 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4** (the
 inference lab) in progress, all on `main`:
 
-- **M4a quant sweep** — harness + **core run done** (12 cells, 0.5B+1.5B); the
-  quality/footprint Pareto frontier is final (knee = 1.5B Q4_K_M/Q5_K_M). A clean **re-run is
-  unblocked** (proper PSU now verified — the old run under-volt-throttled the speed column and
-  deferred the 3B row): `rm results/sweep/sweep.csv results/sweep/raw/*` then
-  `scripts/70_quant_sweep.sh` → clean 18-cell speed + 3B, then refresh `findings.md`.
-- **M4b RAG evals** — the `faraday.eval` engine (dataset · metrics recall@k/MRR/citation/
-  abstention · Claude-as-judge · resumable runner · scorecard+ablation report) is built+tested
-  (69 tests). **Plan 2 written (`bf87672`) but unexecuted**: Apollo-era corpus fetcher +
-  Claude golden-set generator + `runner.run`/`scripts/80_run_evals.sh` + `report.main`. Its
-  code tasks run inline anytime; the **data tasks need `ANTHROPIC_API_KEY`** (Claude draft +
-  judge) + golden-set curation + a ~3–4 h Pi run (judge at the baseline config only).
-- **M4c optimization** — not yet designed.
+- **M4a quant sweep** — harness + core run done (12 cells); the quality/footprint Pareto
+  frontier is final (knee = 1.5B Q4_K_M/Q5_K_M). The clean **18-cell re-run is RUNNING**
+  (launched 2026-06-10 on the verified PSU, throttle holding `0x0`; the 3B tail is the slow
+  part). On completion: commit the clean `sweep.csv`/`frontier.png`/`leaderboard.md`, rewrite
+  the `findings.md` speed section + add the 3B analysis, sign off M4a.
+- **M4b RAG evals** — `faraday.eval` engine merged (`91a77ad`, 69 tests). Plan 2's **code
+  tasks are AUTHORED on branch `m4b-eval-data-run`** (on origin; unverified — pending a Pi
+  batch-verify once the sweep frees the board): corpus fetcher + Claude golden-set generator +
+  `runner.run`/`scripts/80_run_evals.sh` + `report.main`. The **data tasks still need
+  `ANTHROPIC_API_KEY`** (Claude draft + judge) + golden-set curation + a ~3–4 h Pi run.
+- **M4c optimization** — **spec committed (`fbdbf51`); pending plan.** Ablate-then-stack
+  tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock) + speculative
+  decoding + Ollama baseline + TTFT-vs-context, on 1.5B Q4_K_M, extending `faraday.bench`.
 
 Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
 "polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,
