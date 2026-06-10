@@ -36,3 +36,17 @@ def configs() -> list[AblationConfig]:
         for cs in CHUNK_SIZES
         for k in TOP_KS
     ]
+
+
+# Judge answer-quality only at this baseline config (cost control); deterministic
+# metrics still cover the full grid.
+BASELINE = AblationConfig(top_k=4, chunk_size=1200, chunk_overlap=200)
+
+# The themed corpus: Apollo-era crewed spaceflight (dense, overlapping facts so
+# retrieval must be precise). ~15 articles.
+CORPUS_TITLES = (
+    "Apollo 11", "Apollo 13", "Apollo program", "Saturn V", "Neil Armstrong",
+    "Buzz Aldrin", "Michael Collins (astronaut)", "Apollo Lunar Module",
+    "Project Gemini", "Apollo 1", "Apollo 17", "Space Race",
+    "Apollo command and service module", "Lunar Roving Vehicle", "Apollo 8",
+)
