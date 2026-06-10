@@ -1,6 +1,6 @@
 from faraday.eval.dataset import EvalItem
 from faraday.eval.judge import JudgeVerdict
-from faraday.eval.report import judge_rows, make_scorecard, render_ablation
+from faraday.eval.report import judge_rows, load_or_score, make_scorecard, render_ablation
 
 
 class FakeJudge:
@@ -43,3 +43,19 @@ def test_render_ablation_writes_png(tmp_path):
     out = tmp_path / "ablations.png"
     render_ablation(per_config, out)
     assert out.exists() and out.stat().st_size > 0
+
+
+class BoomJudge:
+    def score(self, **kwargs):
+        raise AssertionError("should not be called when cache exists")
+
+
+def test_load_or_score_writes_then_reads_cache(tmp_path):
+    items = {"q1": _item("q1", True)}
+    rows = _rows("k4_c1200_o200")
+    cache = tmp_path / "judge_k4.jsonl"
+    first = load_or_score(rows, items, FakeJudge(), cache)   # scores + writes cache
+    assert first["q1"].faithfulness == 5
+    assert cache.exists()
+    again = load_or_score(rows, items, BoomJudge(), cache)   # loads cache, no judge call
+    assert again["q1"].correctness == 4

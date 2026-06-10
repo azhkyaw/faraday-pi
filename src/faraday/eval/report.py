@@ -3,6 +3,7 @@ an ablation plot. Judge is injected (fake in tests; AnthropicJudge live).
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from faraday.eval.dataset import EvalItem
@@ -63,3 +64,59 @@ def render_ablation(per_config: dict[str, dict], out_path: Path,
     fig.tight_layout()
     fig.savefig(out_path, dpi=120)
     plt.close(fig)
+
+
+def load_or_score(rows: list[dict], items_by_id: dict[str, EvalItem],
+                  judge: Judge, cache_path: Path) -> dict[str, JudgeVerdict]:
+    """Judge answered rows, freezing verdicts to cache_path. If the cache exists,
+    load it and skip the API entirely (re-score without re-calling Claude)."""
+    if Path(cache_path).exists():
+        out: dict[str, JudgeVerdict] = {}
+        for line in Path(cache_path).read_text().splitlines():
+            if line.strip():
+                d = json.loads(line)
+                out[d["qid"]] = JudgeVerdict(d["faithfulness"], d["correctness"],
+                                             d["rationale"])
+        return out
+    verdicts = judge_rows(rows, items_by_id, judge)
+    Path(cache_path).parent.mkdir(parents=True, exist_ok=True)
+    with Path(cache_path).open("w") as f:
+        for qid, v in verdicts.items():
+            f.write(json.dumps({"qid": qid, "faithfulness": v.faithfulness,
+                                "correctness": v.correctness, "rationale": v.rationale}) + "\n")
+    return verdicts
+
+
+def main() -> None:
+    """Score the recorded run: deterministic metrics over ALL configs + judge answer
+    quality at the BASELINE config only (cost control). Writes scorecard + plot."""
+    from faraday.eval import config
+    from faraday.eval.dataset import load_golden
+    from faraday.eval.judge import AnthropicJudge
+    from faraday.eval.metrics import aggregate
+
+    items = load_golden(config.GOLDEN_PATH)
+    by_id = {it.id: it for it in items}
+    per_config: dict[str, dict] = {}
+    for cfg in config.configs():
+        raw = config.RAW_DIR / f"{cfg.slug}.jsonl"
+        if not raw.exists():
+            continue
+        rows = [json.loads(ln) for ln in raw.read_text().splitlines() if ln.strip()]
+        m = aggregate(rows, by_id, size=cfg.chunk_size, overlap=cfg.chunk_overlap)
+        if cfg.slug == config.BASELINE.slug:  # judge answer quality at baseline only
+            cache = config.JUDGE_DIR / f"{cfg.slug}.jsonl"
+            verdicts = load_or_score(rows, by_id, AnthropicJudge(), cache)
+            if verdicts:
+                m["faithfulness"] = sum(v.faithfulness for v in verdicts.values()) / len(verdicts)
+                m["correctness"] = sum(v.correctness for v in verdicts.values()) / len(verdicts)
+        per_config[cfg.slug] = m
+
+    config.EVAL_DIR.mkdir(parents=True, exist_ok=True)
+    (config.EVAL_DIR / "scorecard.md").write_text(make_scorecard(per_config))
+    render_ablation(per_config, config.EVAL_DIR / "ablations.png", metric="recall_at_k")
+    print(f"wrote scorecard.md + ablations.png for {len(per_config)} configs")
+
+
+if __name__ == "__main__":
+    main()
