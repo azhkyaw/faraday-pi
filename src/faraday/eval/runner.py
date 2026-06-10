@@ -7,7 +7,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from faraday.config import Settings
+from faraday.eval import config
 from faraday.eval.config import AblationConfig
+from faraday.eval.dataset import EvalItem, load_golden
 from faraday.eval.metrics import is_abstention
 from faraday.models import Answer
 
@@ -45,3 +48,61 @@ def done_keys(path: Path) -> set[tuple[str, str]]:
             d = json.loads(line)
             out.add((d["slug"], d["qid"]))
     return out
+
+
+def _raw_path(cfg: AblationConfig) -> Path:
+    return config.RAW_DIR / f"{cfg.slug}.jsonl"
+
+
+def run_config(cfg: AblationConfig, engine, items: list[EvalItem], raw_path: Path) -> int:
+    """Ask each not-yet-done question through `engine` and record raw. Returns #new."""
+    done = done_keys(raw_path)
+    n = 0
+    for item in items:
+        if (cfg.slug, item.id) in done:
+            continue
+        answer = engine.answer(item.question)
+        append_record(raw_path, record_from_answer(cfg, item.id, answer))
+        n += 1
+    return n
+
+
+def build_engine(chunk_size: int, overlap: int, top_k: int, settings: Settings):
+    """Pi-only: ingest the corpus at this chunk-size into a fresh store, wire a real
+    RagEngine at this top_k. Needs sqlite-vec + the embed/gen servers up."""
+    from faraday.embedder import HttpEmbedder
+    from faraday.index_store import SqliteVecStore
+    from faraday.ingest import ingest
+    from faraday.llm_client import HttpLLMClient
+    from faraday.rag import RagEngine
+    from faraday.retriever import Retriever
+
+    db = config.EVAL_DIR / f"store_c{chunk_size}.sqlite"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    if db.exists():
+        db.unlink()  # fresh store (CREATE TABLE IF NOT EXISTS would otherwise dup)
+    embedder = HttpEmbedder(settings)
+    store = SqliteVecStore(str(db), dim=settings.embed_dim)
+    ingest(config.CORPUS_DIR, store, embedder, chunk_size=chunk_size, chunk_overlap=overlap)
+    retriever = Retriever(embedder, store)
+    return RagEngine(retriever, HttpLLMClient(settings), top_k=top_k)
+
+
+def run() -> None:
+    """Full grid on the Pi: ingest once per chunk-size, loop top_k, record raw."""
+    settings = Settings.from_env()
+    items = load_golden(config.GOLDEN_PATH)
+    by_size: dict[int, int] = {}
+    for cfg in config.configs():
+        by_size[cfg.chunk_size] = cfg.chunk_overlap
+    for size, overlap in sorted(by_size.items()):
+        for top_k in config.TOP_KS:
+            cfg = AblationConfig(top_k=top_k, chunk_size=size, chunk_overlap=overlap)
+            print(f"--- {cfg.slug} ---", flush=True)
+            engine = build_engine(size, overlap, top_k, settings)
+            made = run_config(cfg, engine, items, _raw_path(cfg))
+            print(f"    recorded {made} new rows", flush=True)
+
+
+if __name__ == "__main__":
+    run()
