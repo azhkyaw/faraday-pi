@@ -67,11 +67,11 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4** (the
 inference lab) in progress, all on `main`:
 
-- **M4a quant sweep** — harness + core run done (12 cells); the quality/footprint Pareto
-  frontier is final (knee = 1.5B Q4_K_M/Q5_K_M). The clean **18-cell re-run is RUNNING**
-  (launched 2026-06-10 on the verified PSU, throttle holding `0x0`; the 3B tail is the slow
-  part). On completion: commit the clean `sweep.csv`/`frontier.png`/`leaderboard.md`, rewrite
-  the `findings.md` speed section + add the 3B analysis, sign off M4a.
+- **M4a quant sweep — ✅ COMPLETE, signed off 2026-06-10.** Final 18-cell artifacts +
+  findings in `results/sweep/` (clean run, `0x0` across ~15 h). Verdict: knee = **1.5B
+  Q4_K_M**; decode is bandwidth-bound (`≈3.8 GB/s ÷ model_bytes`, measured 18 ways);
+  prefill is kernel-bound (Q8_0/Q4_K_M fastest); 3B fits in RAM but fails interactivity
+  (1.92 tok/s) and is broken below Q4_K_M (its Q3/Q2 are dominated by 1.5B cells).
 - **M4b RAG evals** — `faraday.eval` engine merged (`91a77ad`, 69 tests). Plan 2's **code
   tasks are AUTHORED on branch `m4b-eval-data-run`** (on origin; unverified — pending a Pi
   batch-verify once the sweep frees the board): corpus fetcher + Claude golden-set generator +
@@ -89,4 +89,5 @@ Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (fin
 packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
 never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
-project is execute-only**: M4a closeout → M4b verify+run → M4c run → M5.
+project is execute-only**: M4b verify+run → M4c run → M5. The board is free (no run in
+flight).
