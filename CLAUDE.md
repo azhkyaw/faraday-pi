@@ -72,11 +72,13 @@ inference lab) in progress, all on `main`:
   Q4_K_M**; decode is bandwidth-bound (`≈3.8 GB/s ÷ model_bytes`, measured 18 ways);
   prefill is kernel-bound (Q8_0/Q4_K_M fastest); 3B fits in RAM but fails interactivity
   (1.92 tok/s) and is broken below Q4_K_M (its Q3/Q2 are dominated by 1.5B cells).
-- **M4b RAG evals** — `faraday.eval` engine merged (`91a77ad`, 69 tests). Plan 2's **code
-  tasks are AUTHORED on branch `m4b-eval-data-run`** (on origin; unverified — pending a Pi
-  batch-verify once the sweep frees the board): corpus fetcher + Claude golden-set generator +
-  `runner.run`/`scripts/80_run_evals.sh` + `report.main`. The **data tasks still need
-  `ANTHROPIC_API_KEY`** (Claude draft + judge) + golden-set curation + a ~3–4 h Pi run.
+- **M4b RAG evals** — `faraday.eval` engine merged (`91a77ad`). Plan 2 code **batch-verified
+  on the Pi 2026-06-12** on branch `m4b-eval-data-run` (83 tests + ruff green at `4674865`;
+  audit fixes applied `2375a04`: judge now sees chunk text, ingest once per chunk-size,
+  abstention judge cross-check per spec §10, script chmod; `main` merged in). **Remaining:
+  the data tasks** — corpus fetch on the Pi, Claude golden-set draft + hand-curation, the
+  ~3–4 h Pi run, judge scoring — which **need `ANTHROPIC_API_KEY`** (ask the user first;
+  judge at baseline config only, for cost).
 - **M4c optimization** — **fully designed: spec (`fbdbf51`) + plan (`35ae99a`); pending
   execution** (needs a quiet board — sequence after the M4a closeout + M4b run).
   Ablate-then-stack tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock)
@@ -89,5 +91,5 @@ Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (fin
 packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
 never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
-project is execute-only**: M4b verify+run → M4c run → M5. The board is free (no run in
-flight).
+project is execute-only**: M4b data+run → M4c run → M5. The board is free (no run in
+flight); the Pi worktree is on branch `m4b-eval-data-run`.
