@@ -23,5 +23,6 @@ bash scripts/70_quant_sweep.sh
 # Then commit the curated outputs from the dev box.
 ```
 
-`status` ∈ {`ok`, `oom`, `download_failed`, `error`}. A non-fitting 3B cell is
-`oom` — that's a charted result (the 4 GB ceiling), not a bug.
+`status` ∈ {`ok`, `oom`, `download_failed`, `error`}. A non-fitting cell would be
+`oom` — a charted result (the 4 GB ceiling), not a bug. In the final 2026-06-10 run it
+went unused: **18/18 `ok`** — every cell fits; the 3B wall is speed, not memory.
