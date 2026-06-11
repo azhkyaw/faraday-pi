@@ -1,7 +1,8 @@
 """Deterministic RAG metrics over recorded raw rows. Pure — no Pi, no network.
 
-Retrieved chunks carry only (source, ord), so a chunk's char span is recomputed
-from the chunker's geometry: step = size - overlap, start = ord*step, end = start+size.
+Retrieved rows carry (source, ord, text); relevance uses only (source, ord) — the
+chunk's char span is recomputed from the chunker's geometry: step = size - overlap,
+start = ord*step, end = start+size. (The text is for the judge, not for relevance.)
 Relevance = the chunk's span overlaps the labeled relevant_span in the same source doc.
 """
 from __future__ import annotations

@@ -21,7 +21,8 @@ def record_from_answer(cfg: AblationConfig, qid: str, answer: Answer) -> dict:
                    "chunk_overlap": cfg.chunk_overlap},
         "slug": cfg.slug,
         "qid": qid,
-        "retrieved": [{"source": rc.chunk.source, "ord": rc.chunk.ord}
+        "retrieved": [{"source": rc.chunk.source, "ord": rc.chunk.ord,
+                       "text": rc.chunk.text}
                       for rc in answer.sources],
         "answer": answer.text,
         "cited": list(answer.cited_indices),
@@ -67,14 +68,12 @@ def run_config(cfg: AblationConfig, engine, items: list[EvalItem], raw_path: Pat
     return n
 
 
-def build_engine(chunk_size: int, overlap: int, top_k: int, settings: Settings):
-    """Pi-only: ingest the corpus at this chunk-size into a fresh store, wire a real
-    RagEngine at this top_k. Needs sqlite-vec + the embed/gen servers up."""
+def build_retriever(chunk_size: int, overlap: int, settings: Settings):
+    """Pi-only: ingest the corpus at this chunk-size into a fresh store. Needs
+    sqlite-vec + the embed server up. Called once per chunk-size — see run()."""
     from faraday.embedder import HttpEmbedder
     from faraday.index_store import SqliteVecStore
     from faraday.ingest import ingest
-    from faraday.llm_client import HttpLLMClient
-    from faraday.rag import RagEngine
     from faraday.retriever import Retriever
 
     db = config.EVAL_DIR / f"store_c{chunk_size}.sqlite"
@@ -84,22 +83,31 @@ def build_engine(chunk_size: int, overlap: int, top_k: int, settings: Settings):
     embedder = HttpEmbedder(settings)
     store = SqliteVecStore(str(db), dim=settings.embed_dim)
     ingest(config.CORPUS_DIR, store, embedder, chunk_size=chunk_size, chunk_overlap=overlap)
-    retriever = Retriever(embedder, store)
-    return RagEngine(retriever, HttpLLMClient(settings), top_k=top_k)
+    return Retriever(embedder, store)
 
 
-def run() -> None:
-    """Full grid on the Pi: ingest once per chunk-size, loop top_k, record raw."""
+def run(retriever_factory=None, llm=None) -> None:
+    """Full grid on the Pi: ingest ONCE per chunk-size, then share that retriever
+    across the top_k engines (the ingest is the expensive part; a RagEngine is cheap).
+    Factories injectable so the grid logic unit-tests off-Pi."""
+    from faraday.rag import RagEngine
+
     settings = Settings.from_env()
     items = load_golden(config.GOLDEN_PATH)
+    make_retriever = retriever_factory or build_retriever
+    if llm is None:
+        from faraday.llm_client import HttpLLMClient
+        llm = HttpLLMClient(settings)
     by_size: dict[int, int] = {}
     for cfg in config.configs():
         by_size[cfg.chunk_size] = cfg.chunk_overlap
     for size, overlap in sorted(by_size.items()):
+        print(f"=== ingest chunk_size={size} (overlap {overlap}) ===", flush=True)
+        retriever = make_retriever(size, overlap, settings)
         for top_k in config.TOP_KS:
             cfg = AblationConfig(top_k=top_k, chunk_size=size, chunk_overlap=overlap)
             print(f"--- {cfg.slug} ---", flush=True)
-            engine = build_engine(size, overlap, top_k, settings)
+            engine = RagEngine(retriever, llm, top_k=top_k)
             made = run_config(cfg, engine, items, _raw_path(cfg))
             print(f"    recorded {made} new rows", flush=True)
 

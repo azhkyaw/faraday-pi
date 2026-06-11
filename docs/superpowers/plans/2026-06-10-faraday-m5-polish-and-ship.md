@@ -808,7 +808,7 @@ Expected: all unit tests green, ruff clean. (The integration smoke runs with `-m
 ### Task 10: GBNF before/after measurement — **gated on M4b merge + baseline run**
 
 **Files:**
-- Modify: `src/faraday/eval/runner.py` (env overrides; grammar wiring in `build_engine`)
+- Modify: `src/faraday/eval/runner.py` (env overrides; grammar wiring where `run()` builds each `RagEngine`)
 - Create: `src/faraday/eval/gbnf_compare.py`, `scripts/95_gbnf_measure.sh`
 - Test: `tests/test_gbnf_compare.py`
 
@@ -883,23 +883,26 @@ if __name__ == "__main__":
     main()
 ```
 
-`src/faraday/eval/runner.py` — two env overrides in `run()` (+ `import os` at top), and grammar wiring in `build_engine`:
+`src/faraday/eval/runner.py` — two env overrides in `run()` (+ `import os` at top), and grammar
+wiring where `run()` builds each `RagEngine` (since the M4b audit fixes, ingest happens once per
+chunk-size via `build_retriever` and `run()` constructs one engine per top_k):
 
 ```python
-# in build_engine(), replace the final return with:
+# in run(), where the engine is built:
     from faraday.grammar import build_citation_grammar
     gb = build_citation_grammar if settings.use_grammar else None
-    return RagEngine(retriever, HttpLLMClient(settings), top_k=top_k, grammar_builder=gb)
+    engine = RagEngine(retriever, llm, top_k=top_k, grammar_builder=gb)
 
 # in run(), at the top:
     only = {s for s in os.environ.get("FARADAY_EVAL_CONFIGS", "").split(",") if s}
     raw_base = Path(os.environ.get("FARADAY_EVAL_RAW_DIR", str(config.RAW_DIR)))
-# and inside the loop, replace `_raw_path(cfg)` / add the filter:
+# and inside the inner loop, replace `_raw_path(cfg)` / add the filter:
             if only and cfg.slug not in only:
                 continue
             made = run_config(cfg, engine, items, raw_base / f"{cfg.slug}.jsonl")
 ```
-(Build the engine *after* the filter check so skipped configs don't ingest.)
+(Also skip a chunk-size's outer iteration entirely when none of its configs are selected, so
+filtered sizes don't ingest — the ingest now lives in the outer per-size loop.)
 
 `scripts/95_gbnf_measure.sh`:
 

@@ -1,4 +1,4 @@
-from faraday.eval.judge import JudgeVerdict, build_judge_prompt
+from faraday.eval.judge import JudgeVerdict, build_abstention_prompt, build_judge_prompt
 
 
 def test_build_judge_prompt_includes_all_parts():
@@ -18,3 +18,13 @@ def test_build_judge_prompt_includes_all_parts():
 def test_judge_verdict_holds_scores():
     v = JudgeVerdict(faithfulness=5, correctness=4, rationale="grounded; minor omission")
     assert v.faithfulness == 5 and v.correctness == 4
+
+
+def test_build_abstention_prompt_includes_question_and_answer():
+    p = build_abstention_prompt(
+        question="What color is the LM?",
+        answer="The sources do not contain this information.",
+    )
+    assert "What color is the LM?" in p
+    assert "The sources do not contain this information." in p
+    assert "abstained" in p.lower()

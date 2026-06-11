@@ -1,11 +1,25 @@
 from faraday.eval.dataset import EvalItem
 from faraday.eval.judge import JudgeVerdict
-from faraday.eval.report import judge_rows, load_or_score, make_scorecard, render_ablation
+from faraday.eval.report import (
+    abstention_cross_check,
+    judge_rows,
+    load_or_classify_abstentions,
+    load_or_score,
+    make_scorecard,
+    render_ablation,
+)
 
 
 class FakeJudge:
+    def __init__(self):
+        self.seen = []
+
     def score(self, **kwargs):
+        self.seen.append(kwargs)
         return JudgeVerdict(faithfulness=5, correctness=4, rationale="ok")
+
+    def classify_abstention(self, *, question, answer):
+        return "no idea" in answer.lower()
 
 
 def _item(qid, answerable):
@@ -15,7 +29,9 @@ def _item(qid, answerable):
 
 def _rows(slug):
     return [
-        {"slug": slug, "qid": "q1", "retrieved": [{"source": "moon.txt", "ord": 0}],
+        {"slug": slug, "qid": "q1",
+         "retrieved": [{"source": "moon.txt", "ord": 0,
+                        "text": "Apollo 11 landed on 20 July 1969."}],
          "answer": "July 1969 [1].", "cited": [1], "invalid": [], "abstained": False},
     ]
 
@@ -24,6 +40,13 @@ def test_judge_rows_scores_answered_questions():
     items = {"q1": _item("q1", True)}
     scores = judge_rows(_rows("k2_c200_o0"), items, FakeJudge())
     assert scores["q1"].faithfulness == 5 and scores["q1"].correctness == 4
+
+
+def test_judge_sees_chunk_text_in_context():
+    items = {"q1": _item("q1", True)}
+    judge = FakeJudge()
+    judge_rows(_rows("k2_c200_o0"), items, judge)
+    assert "Apollo 11 landed on 20 July 1969." in judge.seen[0]["context"]
 
 
 def test_make_scorecard_has_a_row_per_config():
@@ -49,6 +72,9 @@ class BoomJudge:
     def score(self, **kwargs):
         raise AssertionError("should not be called when cache exists")
 
+    def classify_abstention(self, **kwargs):
+        raise AssertionError("should not be called when cache exists")
+
 
 def test_load_or_score_writes_then_reads_cache(tmp_path):
     items = {"q1": _item("q1", True)}
@@ -59,3 +85,35 @@ def test_load_or_score_writes_then_reads_cache(tmp_path):
     assert cache.exists()
     again = load_or_score(rows, items, BoomJudge(), cache)   # loads cache, no judge call
     assert again["q1"].correctness == 4
+
+
+def _rows_with_missed_abstention(slug):
+    """q2's answer abstains with phrasing the heuristic doesn't know ('no idea')."""
+    return _rows(slug) + [
+        {"slug": slug, "qid": "q2", "retrieved": [],
+         "answer": "I have no idea, sorry.", "cited": [], "invalid": [],
+         "abstained": False},
+    ]
+
+
+def test_load_or_classify_abstentions_writes_then_reads_cache(tmp_path):
+    items = {"q1": _item("q1", True), "q2": _item("q2", False)}
+    rows = _rows_with_missed_abstention("k4_c1200_o200")
+    cache = tmp_path / "abstention_k4.jsonl"
+    first = load_or_classify_abstentions(rows, items, FakeJudge(), cache)
+    assert first == {"q1": False, "q2": True}    # judge catches the missed phrasing
+    assert cache.exists()
+    again = load_or_classify_abstentions(rows, items, BoomJudge(), cache)
+    assert again == {"q1": False, "q2": True}    # cache hit, no judge call
+
+
+def test_abstention_cross_check_scores_judge_and_flags_disagreements():
+    items = {"q1": _item("q1", True), "q2": _item("q2", False)}
+    rows = [
+        {"qid": "q1", "abstained": False},
+        {"qid": "q2", "abstained": False},        # heuristic wrong on q2
+    ]
+    judged = {"q1": False, "q2": True}            # judge right on both
+    out = abstention_cross_check(rows, items, judged)
+    assert out["abstention_judged"] == 1.0
+    assert out["disagreements"] == ["q2"]

@@ -16,9 +16,12 @@ import matplotlib.pyplot as plt  # noqa: E402  (must follow matplotlib.use)
 
 
 def _context_of(row: dict) -> str:
-    # Re-derive a context string from retrieved chunk sources (text isn't recorded;
-    # the judge grades faithfulness against the cited sources by reference).
-    return "\n".join(f"[{i}] (source: {c['source']})" for i, c in enumerate(row["retrieved"], 1))
+    # Chunk text is recorded in raw rows so the judge grades faithfulness against
+    # what the model actually saw (old text-less rows degrade to source-only).
+    return "\n".join(
+        f"[{i}] (source: {c['source']}) {c.get('text', '')}".rstrip()
+        for i, c in enumerate(row["retrieved"], 1)
+    )
 
 
 def judge_rows(rows: list[dict], items_by_id: dict[str, EvalItem],
@@ -36,10 +39,45 @@ def judge_rows(rows: list[dict], items_by_id: dict[str, EvalItem],
     return out
 
 
+def load_or_classify_abstentions(rows: list[dict], items_by_id: dict[str, EvalItem],
+                                 judge: Judge, cache_path: Path) -> dict[str, bool]:
+    """Judge-classify whether each row's answer abstained (spec §10: the phrasing
+    heuristic alone isn't trusted). Frozen to cache_path like load_or_score."""
+    if Path(cache_path).exists():
+        out: dict[str, bool] = {}
+        for line in Path(cache_path).read_text().splitlines():
+            if line.strip():
+                d = json.loads(line)
+                out[d["qid"]] = bool(d["abstained"])
+        return out
+    checks = {
+        r["qid"]: judge.classify_abstention(
+            question=items_by_id[r["qid"]].question, answer=r["answer"])
+        for r in rows
+    }
+    Path(cache_path).parent.mkdir(parents=True, exist_ok=True)
+    with Path(cache_path).open("w") as f:
+        for qid, abstained in checks.items():
+            f.write(json.dumps({"qid": qid, "abstained": abstained}) + "\n")
+    return checks
+
+
+def abstention_cross_check(rows: list[dict], items_by_id: dict[str, EvalItem],
+                           judged: dict[str, bool]) -> dict:
+    """Judge-based abstention accuracy + the qids where heuristic and judge disagree
+    (each disagreement is either a heuristic miss or a judge error — review by hand)."""
+    n = len(rows)
+    acc = (sum(1 for r in rows
+               if judged[r["qid"]] == (not items_by_id[r["qid"]].answerable)) / n
+           if n else 0.0)
+    disagreements = [r["qid"] for r in rows if judged[r["qid"]] != r["abstained"]]
+    return {"abstention_judged": acc, "disagreements": disagreements}
+
+
 def make_scorecard(per_config: dict[str, dict]) -> str:
     """Markdown table, one row per config, columns = the metric keys present."""
     cols = ["recall_at_k", "mrr", "citation_validity", "abstention_accuracy",
-            "faithfulness", "correctness"]
+            "abstention_judged", "faithfulness", "correctness"]
     header = "| config | " + " | ".join(c.replace("_at_k", "@k") for c in cols) + " |"
     sep = "|" + "---|" * (len(cols) + 1)
     lines = ["# Faraday M4b — RAG Eval Scorecard", "", header, sep]
@@ -104,12 +142,19 @@ def main() -> None:
             continue
         rows = [json.loads(ln) for ln in raw.read_text().splitlines() if ln.strip()]
         m = aggregate(rows, by_id, size=cfg.chunk_size, overlap=cfg.chunk_overlap)
-        if cfg.slug == config.BASELINE.slug:  # judge answer quality at baseline only
-            cache = config.JUDGE_DIR / f"{cfg.slug}.jsonl"
-            verdicts = load_or_score(rows, by_id, AnthropicJudge(), cache)
+        if cfg.slug == config.BASELINE.slug:  # judge at baseline only (cost control)
+            judge = AnthropicJudge()
+            verdicts = load_or_score(rows, by_id, judge,
+                                     config.JUDGE_DIR / f"{cfg.slug}.jsonl")
             if verdicts:
                 m["faithfulness"] = sum(v.faithfulness for v in verdicts.values()) / len(verdicts)
                 m["correctness"] = sum(v.correctness for v in verdicts.values()) / len(verdicts)
+            checks = load_or_classify_abstentions(
+                rows, by_id, judge, config.JUDGE_DIR / f"{cfg.slug}.abstention.jsonl")
+            cc = abstention_cross_check(rows, by_id, checks)
+            m["abstention_judged"] = cc["abstention_judged"]
+            if cc["disagreements"]:
+                print(f"abstention heuristic vs judge disagree on: {cc['disagreements']}")
         per_config[cfg.slug] = m
 
     config.EVAL_DIR.mkdir(parents=True, exist_ok=True)

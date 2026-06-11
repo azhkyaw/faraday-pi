@@ -21,6 +21,8 @@ class Judge(Protocol):
     def score(self, *, question: str, reference_answer: str,
               context: str, answer: str) -> JudgeVerdict: ...
 
+    def classify_abstention(self, *, question: str, answer: str) -> bool: ...
+
 
 def build_judge_prompt(*, question: str, reference_answer: str,
                        context: str, answer: str) -> str:
@@ -35,6 +37,18 @@ def build_judge_prompt(*, question: str, reference_answer: str,
         f"Retrieved context:\n{context}\n\n"
         f"Answer to grade:\n{answer}\n\n"
         "Return faithfulness, correctness, and a one-sentence rationale."
+    )
+
+
+def build_abstention_prompt(*, question: str, answer: str) -> str:
+    return (
+        "You are checking whether a RAG system's answer ABSTAINED — i.e. declined to "
+        "answer because the sources don't contain the information — or actually "
+        "committed to an answer.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Answer:\n{answer}\n\n"
+        "Return abstained: true if the answer declines or says the information is "
+        "missing, false if it commits to an answer."
     )
 
 
@@ -65,3 +79,17 @@ class AnthropicJudge:
         s = resp.parsed_output
         return JudgeVerdict(faithfulness=int(s.faithfulness),
                             correctness=int(s.correctness), rationale=s.rationale)
+
+    def classify_abstention(self, *, question: str, answer: str) -> bool:
+        from pydantic import BaseModel  # provided transitively by anthropic
+
+        class _Abstained(BaseModel):
+            abstained: bool
+
+        prompt = build_abstention_prompt(question=question, answer=answer)
+        resp = self.client.messages.parse(
+            model=self.model, max_tokens=256,
+            messages=[{"role": "user", "content": prompt}],
+            output_format=_Abstained,
+        )
+        return bool(resp.parsed_output.abstained)
