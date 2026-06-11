@@ -14,6 +14,10 @@ from faraday.eval import config
 
 API = "https://en.wikipedia.org/w/api.php"
 
+# Wikimedia's robot policy (https://w.wiki/4wJS) 403s python-client requests whose
+# UA lacks contact info — the parenthetical URL is load-bearing, not decoration.
+USER_AGENT = "faraday-eval/0.1 (https://github.com/azhkyaw/faraday) python-httpx"
+
 
 def slugify(title: str) -> str:
     s = title.lower().replace(" ", "_")
@@ -34,7 +38,8 @@ def fetch_extract(client: httpx.Client, title: str) -> tuple[str, str]:
         "action": "query", "format": "json", "prop": "extracts|info",
         "titles": title, "explaintext": 1, "redirects": 1, "inprop": "url",
     })
-    resp.raise_for_status()
+    if resp.status_code >= 400:  # surface the body — Wikimedia 403s explain themselves
+        raise RuntimeError(f"HTTP {resp.status_code} for {title!r}: {resp.text[:300]}")
     return parse_pages(resp.json())
 
 
@@ -45,7 +50,7 @@ def fetch_all(out_dir: Path | None = None) -> Path:
     sources = ["# Eval corpus sources",
                "", "Wikipedia articles, text licensed CC BY-SA 4.0. "
                "Fetched via the MediaWiki action API (plaintext extracts).", ""]
-    with httpx.Client(timeout=30.0, headers={"User-Agent": "faraday-eval/0.1"}) as client:
+    with httpx.Client(timeout=30.0, headers={"User-Agent": USER_AGENT}) as client:
         for title in config.CORPUS_TITLES:
             text, url = fetch_extract(client, title)
             (out_dir / f"{slugify(title)}.txt").write_text(text, encoding="utf-8")

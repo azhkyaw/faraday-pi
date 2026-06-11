@@ -1,9 +1,18 @@
-from faraday.eval.corpus import parse_pages, slugify
+import re
+
+from faraday.eval.corpus import USER_AGENT, parse_pages, slugify
 
 
 def test_slugify_makes_safe_filenames():
     assert slugify("Apollo 11") == "apollo_11"
     assert slugify("Michael Collins (astronaut)") == "michael_collins_astronaut"
+
+
+def test_user_agent_has_contact_info():
+    # Wikimedia's robot policy 403s python-client requests whose UA lacks contact
+    # info (a URL or email in parentheses) — learned live: bare "faraday-eval/0.1"
+    # was blocked with "Please respect our robot policy https://w.wiki/4wJS".
+    assert re.search(r"\([^)]*(https?://|@)[^)]*\)", USER_AGENT)
 
 
 def test_parse_pages_extracts_text_and_url():
