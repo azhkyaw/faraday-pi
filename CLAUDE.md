@@ -55,6 +55,15 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
   benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
+- **llama-server sends nothing until a request finishes** (embeddings, non-streaming chat) —
+  so an httpx read timeout measures the server's *total compute time* for the request.
+  Bound per-request work (`HttpEmbedder` batches 16 texts/POST) and size timeouts from
+  measurement, not vibes (eval runner: 1800 s). Three M4b launch crashes shared the
+  `ReadTimeout` symptom with three different root causes — read the *server's* log too.
+- **Prefill collapses with context depth**: ~40 tok/s on short prompts → 6.75 tok/s at
+  ~4.3 k tokens (1.5B Q4_K_M). Price long-context batch runs by prompt tokens, not per
+  question (k8_c2400 ≈ 13 min/answer). The eval grid's biggest cell also needs
+  `GEN_CTX=8192` (exported by `80_run_evals.sh`; appliance default 4096).
 - **The app/servers aren't daemons** — nothing auto-starts on boot, so after a Pi
   reboot/power-cycle re-run `scripts/30_run_servers.sh` (+ start the app). To keep the app
   alive after you close *your* SSH session, start it detached:
@@ -72,13 +81,21 @@ inference lab) in progress, all on `main`:
   Q4_K_M**; decode is bandwidth-bound (`≈3.8 GB/s ÷ model_bytes`, measured 18 ways);
   prefill is kernel-bound (Q8_0/Q4_K_M fastest); 3B fits in RAM but fails interactivity
   (1.92 tok/s) and is broken below Q4_K_M (its Q3/Q2 are dominated by 1.5B cells).
-- **M4b RAG evals** — `faraday.eval` engine merged (`91a77ad`). Plan 2 code **batch-verified
-  on the Pi 2026-06-12** on branch `m4b-eval-data-run` (83 tests + ruff green at `4674865`;
-  audit fixes applied `2375a04`: judge now sees chunk text, ingest once per chunk-size,
-  abstention judge cross-check per spec §10, script chmod; `main` merged in). **Remaining:
-  the data tasks** — corpus fetch on the Pi, Claude golden-set draft + hand-curation, the
-  ~3–4 h Pi run, judge scoring — which **need `ANTHROPIC_API_KEY`** (ask the user first;
-  judge at baseline config only, for cost).
+- **M4b RAG evals** — engine merged (`91a77ad`), batch-verified + audit fixes (`2375a04`).
+  Data done 2026-06-12: Apollo corpus (`abd911c`, 15 articles) + curated golden set
+  (`e51c082`: 41 answerable with machine-verified source spans + 6 abstention items; 3 of
+  the plan's hand-authored "unanswerable" questions were answerable from the corpus and
+  were replaced with grep-verified-absent ones). **Run IN FLIGHT since 2026-06-13**
+  (attempt 3, code `348e278`) after three launch failures, all surfacing as
+  `httpx.ReadTimeout` with distinct root causes: unbounded per-document embed batches
+  (`78c7574`), gen context too small for k8_c2400 + interactive-sized LLM timeout
+  (`5395037`, GEN_CTX=8192), then timeout re-sized to *measured* deep prefill (`348e278`,
+  1800 s). Revised ETA **~20–27 h** — deep-context prefill is 6.75 tok/s, so k8_c2400
+  ≈ 13 min/question (the plan's 3–4 h estimate assumed flat ~30 s/q). Scope choice offered
+  to the user (trim deep cells?); default = full grid; resumable per (config, question).
+  Then: judge scoring at the baseline config only (`ANTHROPIC_API_KEY` lives in
+  `~/.faraday_env` on the Pi — source it, never echo it) → scorecard/ablations/findings →
+  merge to main.
 - **M4c optimization** — **fully designed: spec (`fbdbf51`) + plan (`35ae99a`); pending
   execution** (needs a quiet board — sequence after the M4a closeout + M4b run).
   Ablate-then-stack tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock)
@@ -91,5 +108,6 @@ Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (fin
 packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
 never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
-project is execute-only**: M4b data+run → M4c run → M5. The board is free (no run in
-flight); the Pi worktree is on branch `m4b-eval-data-run`.
+project is execute-only**: M4b run (in flight) → M4c run → M5. **The board is BUSY** with
+the M4b eval run (started 2026-06-13, ~20–27 h, resumable — don't start other Pi work);
+the Pi worktree is on branch `m4b-eval-data-run`.
