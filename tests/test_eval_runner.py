@@ -74,9 +74,10 @@ class _FakeRetriever:
 
 
 def test_run_default_llm_uses_batch_timeout(tmp_path, monkeypatch):
-    """The eval is a batch job: the k8_c2400 cell prefills a ~4.7k-token prompt
-    for minutes before llama-server sends a byte, so the runner's default LLM
-    client needs a far longer read timeout than the interactive app's 120 s."""
+    """The eval is a batch job: deep-context prefill measured 6.75 tok/s on the
+    Pi, so a k8_c2400 question takes ~12-14 min before llama-server sends a
+    byte. The runner's default LLM client needs a read timeout sized for that,
+    not the interactive app's 120 s."""
     import faraday.llm_client as llm_client
     from faraday.eval import config, runner
 
@@ -99,7 +100,7 @@ def test_run_default_llm_uses_batch_timeout(tmp_path, monkeypatch):
 
     monkeypatch.setattr(llm_client, "HttpLLMClient", FakeHttpLLM)
     runner.run(retriever_factory=lambda size, overlap, settings: _FakeRetriever())
-    assert captured["timeout"] == 600.0
+    assert captured["timeout"] == 1800.0
 
 
 def test_run_ingests_once_per_chunk_size(tmp_path, monkeypatch, fake_llm):

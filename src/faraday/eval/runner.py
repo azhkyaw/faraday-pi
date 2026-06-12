@@ -97,10 +97,12 @@ def run(retriever_factory=None, llm=None) -> None:
     make_retriever = retriever_factory or build_retriever
     if llm is None:
         from faraday.llm_client import HttpLLMClient
-        # Batch job, not interactive chat: the k8_c2400 cell prefills a ~4.7k-token
-        # prompt (minutes on the Pi) before llama-server sends a single byte, and
-        # complete() is non-streaming. 120 s (the app default) killed the k8 cells.
-        llm = HttpLLMClient(settings, timeout=600.0)
+        # Batch job, not interactive chat: complete() is non-streaming and deep-
+        # context prefill measured 6.75 tok/s on the Pi 4, so a k8_c2400 question
+        # legitimately takes ~12-14 min before llama-server sends a single byte.
+        # 120 s (the app default) killed the k8 cells; hangs are the run monitor's
+        # job to catch, not this timeout's.
+        llm = HttpLLMClient(settings, timeout=1800.0)
     by_size: dict[int, int] = {}
     for cfg in config.configs():
         by_size[cfg.chunk_size] = cfg.chunk_overlap
