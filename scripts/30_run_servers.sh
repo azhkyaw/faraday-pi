@@ -10,15 +10,19 @@ set -euo pipefail
 BIN="$HOME/llama.cpp/build/bin/llama-server"
 M="$HOME/faraday/models"
 THREADS="$(nproc)"
+# Gen context window. The appliance default is 4096; the M4b eval grid's largest
+# cell (top_k=8 x chunk 2400 ~= 4.7k prompt tokens + 512 generated) needs more,
+# so 80_run_evals.sh exports GEN_CTX=8192 (KV cache cost ~+117 MB, fine on 4 GB).
+GEN_CTX="${GEN_CTX:-4096}"
 GEN="$(ls "$M"/*q4_k_m.gguf | head -1)"
 EMB="$(ls "$M"/*f16.gguf | head -1)"
 
 pkill -f 'llama-server' 2>/dev/null || true
 sleep 1
 
-nohup "$BIN" -m "$GEN" -c 4096 -t "$THREADS" --metrics --host 0.0.0.0 --port 8080 \
+nohup "$BIN" -m "$GEN" -c "$GEN_CTX" -t "$THREADS" --metrics --host 0.0.0.0 --port 8080 \
   >/tmp/gen.log 2>&1 &
-echo "gen   server pid $! (:8080)  model: $(basename "$GEN")"
+echo "gen   server pid $! (:8080, ctx $GEN_CTX)  model: $(basename "$GEN")"
 
 nohup "$BIN" -m "$EMB" --embeddings --metrics -t "$THREADS" --host 0.0.0.0 --port 8081 \
   >/tmp/embed.log 2>&1 &

@@ -73,6 +73,35 @@ class _FakeRetriever:
         return [rc]
 
 
+def test_run_default_llm_uses_batch_timeout(tmp_path, monkeypatch):
+    """The eval is a batch job: the k8_c2400 cell prefills a ~4.7k-token prompt
+    for minutes before llama-server sends a byte, so the runner's default LLM
+    client needs a far longer read timeout than the interactive app's 120 s."""
+    import faraday.llm_client as llm_client
+    from faraday.eval import config, runner
+
+    golden = tmp_path / "golden.jsonl"
+    golden.write_text(json.dumps({
+        "id": "q1", "question": "Q1?", "answerable": True,
+        "relevant_doc": "moon.txt", "relevant_span": [0, 10], "reference_answer": "a",
+    }) + "\n")
+    monkeypatch.setattr(config, "GOLDEN_PATH", golden)
+    monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
+
+    captured = {}
+
+    class FakeHttpLLM:
+        def __init__(self, settings=None, timeout=120.0):
+            captured["timeout"] = timeout
+
+        def complete(self, messages, max_tokens=512):
+            return "ans [1]."
+
+    monkeypatch.setattr(llm_client, "HttpLLMClient", FakeHttpLLM)
+    runner.run(retriever_factory=lambda size, overlap, settings: _FakeRetriever())
+    assert captured["timeout"] == 600.0
+
+
 def test_run_ingests_once_per_chunk_size(tmp_path, monkeypatch, fake_llm):
     """The grid shares one store per chunk-size: 3 ingests for 9 configs, not 9."""
     from faraday.eval import config, runner

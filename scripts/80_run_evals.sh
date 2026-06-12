@@ -10,6 +10,8 @@ cd "$HOME/faraday"
 source .venv/bin/activate
 
 # Servers must be up (embed :8081 for ingest/retrieval, gen :8080 for answers).
+# The grid's largest cell (k8_c2400) needs ~5.3k tokens of gen context.
+export GEN_CTX=8192
 if ! curl -sf http://localhost:8081/health >/dev/null 2>&1; then
   echo "Embed/gen servers not healthy — starting them..."
   bash scripts/30_run_servers.sh
