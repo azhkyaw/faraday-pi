@@ -58,8 +58,16 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **llama-server sends nothing until a request finishes** (embeddings, non-streaming chat) —
   so an httpx read timeout measures the server's *total compute time* for the request.
   Bound per-request work (`HttpEmbedder` batches 16 texts/POST) and size timeouts from
-  measurement, not vibes (eval runner: 1800 s). Three M4b launch crashes shared the
-  `ReadTimeout` symptom with three different root causes — read the *server's* log too.
+  measurement, not vibes (eval runner: 1800 s). *Four* M4b crashes shared the
+  `ReadTimeout` symptom with four different root causes — read the *server's* log too.
+- **llama-server's prompt cache (`--cache-ram`) defaults to an 8192 MiB ceiling — bigger
+  than the 4 GB board.** It grows ~20 MiB per distinct prompt; over a long batch of unique
+  prompts it reached 2.4 GB, evicted the *mmap'd model weights* from page cache, and
+  collapsed decode to 0.07 tok/s (vs ~3.6) — a slow-burn cliff that hit at ~5 k requests
+  and killed the M4b run on an *innocent small* config. `30_run_servers.sh` now launches
+  gen with `--no-cache-prompt --cache-ram 512`. Symptom of weight eviction: `free` shows
+  `buff/cache` below the model size + decode `tg` tanks in the gen log; a server restart
+  reclaims it instantly (proof it's cache, not a leak). Not thermal (`0x0`), not OOM-kill.
 - **Prefill collapses with context depth**: ~40 tok/s on short prompts → 6.75 tok/s at
   ~4.3 k tokens (1.5B Q4_K_M). Price long-context batch runs by prompt tokens, not per
   question (k8_c2400 ≈ 13 min/answer). The eval grid's biggest cell also needs
