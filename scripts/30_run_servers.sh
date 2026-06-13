@@ -20,9 +20,15 @@ EMB="$(ls "$M"/*f16.gguf | head -1)"
 pkill -f 'llama-server' 2>/dev/null || true
 sleep 1
 
-nohup "$BIN" -m "$GEN" -c "$GEN_CTX" -t "$THREADS" --metrics --host 0.0.0.0 --port 8080 \
-  >/tmp/gen.log 2>&1 &
-echo "gen   server pid $! (:8080, ctx $GEN_CTX)  model: $(basename "$GEN")"
+# --no-cache-prompt + bounded --cache-ram: llama-server's prompt-state cache
+# defaults to an 8192 MiB ceiling — larger than this board's 3.8 GB RAM — and
+# grows ~20 MiB per distinct prompt. Over the eval's thousands of unique prompts
+# it reached 2.4 GB, evicted the mmap'd weights from page cache, and collapsed
+# decode to 0.07 tok/s (a 50x cliff that killed the M4b run at ~5000 requests).
+# The cache only speeds up repeated prefixes (none here), so disabling it is free.
+nohup "$BIN" -m "$GEN" -c "$GEN_CTX" -t "$THREADS" --no-cache-prompt --cache-ram 512 \
+  --metrics --host 0.0.0.0 --port 8080 >/tmp/gen.log 2>&1 &
+echo "gen   server pid $! (:8080, ctx $GEN_CTX, no-cache-prompt)  model: $(basename "$GEN")"
 
 nohup "$BIN" -m "$EMB" --embeddings --metrics -t "$THREADS" --host 0.0.0.0 --port 8081 \
   >/tmp/embed.log 2>&1 &
