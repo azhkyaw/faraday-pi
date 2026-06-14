@@ -47,8 +47,8 @@ def test_http_embedder_clips_overlong_inputs():
         data = [{"index": i, "embedding": [1.0]} for i, _ in enumerate(texts)]
         return httpx.Response(200, json={"data": data})
 
-    emb = HttpEmbedder(batch_size=16, max_input_chars=1800)
+    emb = HttpEmbedder(batch_size=16, max_input_chars=1450)
     emb._client = httpx.Client(base_url="http://test", transport=httpx.MockTransport(handler))
     vecs = emb.embed(["x" * 5000, "short"])
-    assert sent_lengths == [1800, 5]      # over-long input clipped, short one untouched
+    assert sent_lengths == [1450, 5]      # over-long input clipped, short one untouched
     assert len(vecs) == 2                 # one vector per input, order preserved

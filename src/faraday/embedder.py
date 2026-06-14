@@ -20,16 +20,18 @@ class HttpEmbedder:
     Also caps each input's length. bge-small-en-v1.5 has only 512 trained position
     embeddings, and llama-server embeds an input in a single physical batch
     (n_ubatch=512) — so an input over 512 tokens is a hard 500 ("input is too large
-    to process"), not a silent truncation. A 2400-char Apollo chunk measured 555
-    tokens (~4.3 chars/tok), so the chunk_size=2400 eval configs tripped it. We clip
-    each input to max_input_chars (1800 ~= 420 tokens at that ratio, a ~90-token
-    margin under 512) BEFORE the POST. The stored chunk text is untouched (ingest
+    to process"), not a silent truncation. A 2400-char Apollo chunk tokenizes to
+    as many as 718 tokens, and 52% of the c2400 corpus exceeds 512 -- so the
+    chunk_size=2400 eval configs tripped it. Measured across all 409 c2400 chunks,
+    clipping each input to max_input_chars=1450 keeps every chunk <= 490 tokens (a
+    ~22-token margin under 512; even 1800 chars still left 6 chunks over). We clip
+    BEFORE the POST. The stored chunk text is untouched (ingest
     passes c.text to the store on a separate path), so an over-long chunk is embedded
     from a truncated view while generation still sees its full text.
     """
 
     def __init__(self, settings: Settings | None = None, timeout: float = 120.0,
-                 batch_size: int = 16, max_input_chars: int = 1800):
+                 batch_size: int = 16, max_input_chars: int = 1450):
         self.settings = settings or Settings()
         self.batch_size = batch_size
         self.max_input_chars = max_input_chars
