@@ -59,7 +59,18 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
   so an httpx read timeout measures the server's *total compute time* for the request.
   Bound per-request work (`HttpEmbedder` batches 16 texts/POST) and size timeouts from
   measurement, not vibes (eval runner: 1800 s). *Four* M4b crashes shared the
-  `ReadTimeout` symptom with four different root causes — read the *server's* log too.
+  `ReadTimeout` symptom with four different root causes; a *fifth* was a hard embed-server
+  **HTTP 500** (not a timeout) — always read the *server's* log too (it names the cause).
+- **The embed model has a hard token ceiling — llama-server *rejects* over-long input
+  (HTTP 500), it does not truncate.** bge-small-en-v1.5 has 512 trained positions and embeds
+  each input in one physical batch (`n_ubatch=512`), so a chunk over 512 tokens 500s the
+  request (`input is too large to process`) and crashes ingest (the 5th M4b crash, at the
+  c2400 cells). `HttpEmbedder` clips each input to `max_input_chars=1450` *before* the POST
+  (only the embedded view; stored chunk text stays full for generation). Budget set by
+  **measuring all 409 c2400 chunks** via `/tokenize` (`add_special=true`): max 718 tok, mean
+  513, **52% exceed 512**; 1450 chars keeps every chunk ≤490. Finding: a chunk_size past the
+  embedder's context is self-defeating (retrieval ignores the tail). Don't tune the budget to
+  one sample — the run dies on the *first* breach, hiding the denser chunks behind it.
 - **llama-server's prompt cache (`--cache-ram`) defaults to an 8192 MiB ceiling — bigger
   than the 4 GB board.** It grows ~20 MiB per distinct prompt; over a long batch of unique
   prompts it reached 2.4 GB, evicted the *mmap'd model weights* from page cache, and
@@ -93,12 +104,14 @@ inference lab) in progress, all on `main`:
   Data done 2026-06-12: Apollo corpus (`abd911c`, 15 articles) + curated golden set
   (`e51c082`: 41 answerable with machine-verified source spans + 6 abstention items; 3 of
   the plan's hand-authored "unanswerable" questions were answerable from the corpus and
-  were replaced with grep-verified-absent ones). **Run IN FLIGHT since 2026-06-13**
-  (attempt 3, code `348e278`) after three launch failures, all surfacing as
-  `httpx.ReadTimeout` with distinct root causes: unbounded per-document embed batches
-  (`78c7574`), gen context too small for k8_c2400 + interactive-sized LLM timeout
-  (`5395037`, GEN_CTX=8192), then timeout re-sized to *measured* deep prefill (`348e278`,
-  1800 s). Revised ETA **~20–27 h** — deep-context prefill is 6.75 tok/s, so k8_c2400
+  were replaced with grep-verified-absent ones). **Run IN FLIGHT (resumed 2026-06-15, code `cda2f8f`); at ~284/423 rows, into the
+  c2400 cells (the long pole).** FIVE crashes root-caused — the first four as
+  `httpx.ReadTimeout`: unbounded embed batches (`78c7574`), gen ctx too small for k8_c2400 +
+  interactive timeout (`5395037`, GEN_CTX=8192), timeout re-sized to *measured* deep prefill
+  (`348e278`, 1800 s), prompt-cache decode-collapse (`0260b76`, `--no-cache-prompt
+  --cache-ram 512`); the fifth a hard embed **HTTP 500** — c2400 chunks over bge's 512-token
+  limit, clipped to a *measured* 1450 chars (`ba5879a`→`cda2f8f`; 52% of c2400 chunks exceed
+  512). Revised ETA **~20–27 h** — deep-context prefill is 6.75 tok/s, so k8_c2400
   ≈ 13 min/question (the plan's 3–4 h estimate assumed flat ~30 s/q). Scope choice offered
   to the user (trim deep cells?); default = full grid; resumable per (config, question).
   Then: judge scoring at the baseline config only (`ANTHROPIC_API_KEY` lives in
@@ -117,5 +130,5 @@ packaging, security) + the GBNF citations deferred from M2. **M5 is fully design
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
 never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
 project is execute-only**: M4b run (in flight) → M4c run → M5. **The board is BUSY** with
-the M4b eval run (started 2026-06-13, ~20–27 h, resumable — don't start other Pi work);
+the M4b eval run (in the c2400 cells, ~17 h left, resumable — don't start other Pi work);
 the Pi worktree is on branch `m4b-eval-data-run`.
