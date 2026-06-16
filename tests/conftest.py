@@ -28,13 +28,18 @@ class FakeLLM:
     def __init__(self, reply: str = "Answer [1]."):
         self.reply = reply
         self.last_messages = None
+        self.last_grammar = None
 
-    def complete(self, messages: list[dict], max_tokens: int = 512) -> str:
+    def complete(self, messages: list[dict], max_tokens: int = 512,
+                 grammar: str | None = None) -> str:
         self.last_messages = messages
+        self.last_grammar = grammar
         return self.reply
 
-    def stream(self, messages: list[dict], max_tokens: int = 512):
+    def stream(self, messages: list[dict], max_tokens: int = 512,
+               grammar: str | None = None):
         self.last_messages = messages
+        self.last_grammar = grammar
         mid = len(self.reply) // 2          # two chunks that rejoin to the exact reply
         yield self.reply[:mid]
         yield self.reply[mid:]

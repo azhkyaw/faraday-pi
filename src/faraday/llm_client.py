@@ -7,8 +7,10 @@ from faraday.config import Settings
 
 @runtime_checkable
 class LLMClient(Protocol):
-    def complete(self, messages: list[dict], max_tokens: int = 512) -> str: ...
-    def stream(self, messages: list[dict], max_tokens: int = 512) -> Iterator[str]: ...
+    def complete(self, messages: list[dict], max_tokens: int = 512,
+                 grammar: str | None = None) -> str: ...
+    def stream(self, messages: list[dict], max_tokens: int = 512,
+               grammar: str | None = None) -> Iterator[str]: ...
 
 
 def _tokens_from_sse(lines: Iterator[str]) -> Iterator[str]:
@@ -31,19 +33,21 @@ class HttpLLMClient:
         self.settings = settings or Settings()
         self._client = httpx.Client(base_url=self.settings.gen_url, timeout=timeout)
 
-    def complete(self, messages: list[dict], max_tokens: int = 512) -> str:
-        resp = self._client.post(
-            "/v1/chat/completions",
-            json={"messages": messages, "max_tokens": max_tokens, "stream": False},
-        )
+    def complete(self, messages: list[dict], max_tokens: int = 512,
+                 grammar: str | None = None) -> str:
+        payload = {"messages": messages, "max_tokens": max_tokens, "stream": False}
+        if grammar:
+            payload["grammar"] = grammar
+        resp = self._client.post("/v1/chat/completions", json=payload)
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"]
 
-    def stream(self, messages: list[dict], max_tokens: int = 512) -> Iterator[str]:
-        with self._client.stream(
-            "POST", "/v1/chat/completions",
-            json={"messages": messages, "max_tokens": max_tokens, "stream": True},
-        ) as resp:
+    def stream(self, messages: list[dict], max_tokens: int = 512,
+               grammar: str | None = None) -> Iterator[str]:
+        payload = {"messages": messages, "max_tokens": max_tokens, "stream": True}
+        if grammar:
+            payload["grammar"] = grammar
+        with self._client.stream("POST", "/v1/chat/completions", json=payload) as resp:
             resp.raise_for_status()
             yield from _tokens_from_sse(resp.iter_lines())
 
