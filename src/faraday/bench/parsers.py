@@ -61,3 +61,28 @@ def parse_time_v(text: str) -> int:
     if not m:
         raise ValueError(f"no 'Maximum resident set size' in time -v output: {text!r}")
     return int(m.group(1)) * 1024
+
+
+_OLLAMA_PROMPT_RE = re.compile(r"prompt eval rate:\s*([0-9.]+)")
+_OLLAMA_EVAL_RE = re.compile(r"(?m)^\s*eval rate:\s*([0-9.]+)")  # line-anchored: not "prompt eval rate"
+_SPEC_ACCEPT_RE = re.compile(r"accept\s*=\s*([0-9.]+)\s*%")
+_SPEC_SPEED_RE = re.compile(r"speed:\s*([0-9.]+)\s*t/s")
+
+
+def parse_ollama_bench(text: str) -> tuple[float, float]:
+    """Parse `ollama run --verbose` stats -> (prefill_tps, decode_tps).
+    'prompt eval rate' = prefill; the line-anchored 'eval rate' = decode."""
+    p = _OLLAMA_PROMPT_RE.search(text)
+    d = _OLLAMA_EVAL_RE.search(text)
+    if not p or not d:
+        raise ValueError(f"no ollama eval rates in output: {text!r}")
+    return float(p.group(1)), float(d.group(1))
+
+
+def parse_speculative(text: str) -> tuple[float, float]:
+    """Parse `llama-speculative` output -> (decode_tps, accept_rate_pct)."""
+    speed = _SPEC_SPEED_RE.search(text)
+    accept = _SPEC_ACCEPT_RE.search(text)
+    if not speed or not accept:
+        raise ValueError(f"no speculative speed/accept in output: {text!r}")
+    return float(speed.group(1)), float(accept.group(1))
