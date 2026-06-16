@@ -39,6 +39,11 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **Architecture**: components depend on `Protocol`s (`Embedder`, `LLMClient`) — real HTTP
   impls injected by `cli.py`/`server.py`, fakes by tests. Streaming flows through a
   `Sources`→`Token`→`Done` event seam (also the metrics instrumentation point).
+- **Persist benchmark raw data**: commit the raw audit trail behind every benchmark (M4a's
+  per-cell `*.log` with ppl ±stderr + provenance; M4b's `raw/` rows + frozen `judge/`
+  verdicts) so analysis re-runs with no Pi run / no API re-spend — gitignore only regenerable
+  binaries (`*.sqlite` stores) + pre-curation drafts. `.log` is globally ignored, so kept logs
+  need a negation (`!results/sweep/raw/*.log`).
 
 ## Gotchas (learned the hard way)
 
@@ -96,7 +101,8 @@ M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observabilit
 inference lab) in progress, all on `main`:
 
 - **M4a quant sweep — ✅ COMPLETE, signed off 2026-06-10.** Final 18-cell artifacts +
-  findings in `results/sweep/` (clean run, `0x0` across ~15 h). Verdict: knee = **1.5B
+  findings + per-cell raw logs (ppl ±stderr, build hash, `time -v`) in `results/sweep/`
+  (clean run, `0x0` across ~15 h). Verdict: knee = **1.5B
   Q4_K_M**; decode is bandwidth-bound (`≈3.8 GB/s ÷ model_bytes`, measured 18 ways);
   prefill is kernel-bound (Q8_0/Q4_K_M fastest); 3B fits in RAM but fails interactivity
   (1.92 tok/s) and is broken below Q4_K_M (its Q3/Q2 are dominated by 1.5B cells).
@@ -134,5 +140,7 @@ packaging, security) + the GBNF citations deferred from M2. **M5 is fully design
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
 never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
 project is execute-only**: **M4b ✅ → M4c run → M5**. **The board is FREE** (M4b complete);
-next is **M4c** — the quiet-board optimization study (plan `35ae99a`). The Pi worktree is on
-branch `m4b-eval-data-run` (merged to `main` at M4b close).
+next is **M4c** — the quiet-board optimization study (plan `35ae99a`). ⚠️ Before M4c, **reconcile the Pi worktree** — it's still on `m4b-eval-data-run` @
+`53719fc` and dirty (scp'd `report.py`/`test_eval_report.py` + untracked
+`results/evals/{raw,judge,scorecard,stores}`); simplest is to branch M4c off `main` and
+hard-reset the Pi's worktree to it.
