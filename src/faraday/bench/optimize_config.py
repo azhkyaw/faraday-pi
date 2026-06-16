@@ -46,8 +46,8 @@ def cells() -> list[LeverCell]:
                              (*_BASE, "-t", str(t)), "llama_bench"))
     out.append(LeverCell("batch", "ubatch=1024", "ondemand", (*_BASE, "-ub", "1024"), "llama_bench"))
     out.append(LeverCell("kvquant", "kv=q8_0", "ondemand",
-                         (*_BASE, "-ctk", "q8_0", "-ctv", "q8_0", "-fa"), "llama_bench"))
-    out.append(LeverCell("flashattn", "flash_attn", "ondemand", (*_BASE, "-fa"), "llama_bench"))
+                         (*_BASE, "-ctk", "q8_0", "-ctv", "q8_0", "-fa", "on"), "llama_bench"))
+    out.append(LeverCell("flashattn", "flash_attn", "ondemand", (*_BASE, "-fa", "on"), "llama_bench"))
     for ctx in CONTEXT_SIZES:
         out.append(LeverCell("context", f"ctx={ctx}", "ondemand",
                              ("-p", str(ctx), "-n", "128"), "llama_bench"))

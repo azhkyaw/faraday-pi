@@ -22,10 +22,11 @@ def test_lever_cells_carry_the_right_flags():
     by_label = {c.label: c for c in cells()}
     assert by_label["governor=performance"].governor == "performance"
     assert by_label["threads=3"].flags == ("-p", "512", "-n", "128", "-t", "3")
-    assert by_label["flash_attn"].flags == ("-p", "512", "-n", "128", "-fa")
-    # V-cache quant requires flash-attn in llama.cpp, so kvquant implies -fa:
+    assert by_label["flash_attn"].flags == ("-p", "512", "-n", "128", "-fa", "on")
+    # V-cache quant requires flash-attn in llama.cpp, so kvquant implies -fa;
+    # this build's llama-bench needs an explicit -fa on|off|auto (bare -fa is rejected):
     assert by_label["kv=q8_0"].flags == (
-        "-p", "512", "-n", "128", "-ctk", "q8_0", "-ctv", "q8_0", "-fa")
+        "-p", "512", "-n", "128", "-ctk", "q8_0", "-ctv", "q8_0", "-fa", "on")
     assert by_label["ctx=2048"].flags == ("-p", "2048", "-n", "128")
     assert by_label["speculative"].kind == "speculative"
     assert by_label["ollama-default"].kind == "ollama"
