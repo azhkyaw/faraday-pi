@@ -95,7 +95,7 @@ def test_run_default_llm_uses_batch_timeout(tmp_path, monkeypatch):
         def __init__(self, settings=None, timeout=120.0):
             captured["timeout"] = timeout
 
-        def complete(self, messages, max_tokens=512):
+        def complete(self, messages, max_tokens=512, grammar=None):
             return "ans [1]."
 
     monkeypatch.setattr(llm_client, "HttpLLMClient", FakeHttpLLM)
