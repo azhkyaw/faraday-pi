@@ -19,9 +19,12 @@ data/
 *.sqlite3
 *.db
 
-# Benchmark/eval outputs: keep curated CSVs + plots, ignore raw logs
+# Benchmark/eval outputs: keep curated CSVs + plots; ignore stray logs, but DO keep the
+# M4a sweep's per-cell raw logs (the audit trail behind sweep.csv -- perplexity stderr,
+# per-chunk ppl series, llama.cpp build hash, /usr/bin/time -v that the CSV omits; 148 KB).
 results/raw/
 *.log
+!results/sweep/raw/*.log
 
 # M4b eval: keep the structured run data -- raw rows + frozen judge caches -- in the
 # repo for reproducibility (the scorecard/findings derive from them; ~3 MB total),

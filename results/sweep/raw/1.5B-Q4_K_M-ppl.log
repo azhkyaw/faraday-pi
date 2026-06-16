@@ -1,0 +1,20 @@
+returncode=0
+--- stdout ---
+25.20 minutes
+[1]6.7430,[2]9.4284,[3]9.5744,[4]9.6000,[5]9.6197,[6]9.9597,[7]10.1155,[8]10.7214,[9]11.2082,[10]11.6432,[11]11.6727,[12]11.9267,[13]12.3359,[14]12.0087,[15]11.8236,[16]12.0419,[17]11.3336,[18]11.4436,[19]11.3499,[20]11.3155,
+
+
+--- stderr ---
+0.00.020.849 I common_init_result: fitting params to device memory ...
+0.00.020.864 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+0.01.179.018 I common_params_fit_impl: projected to use 1293 MiB of host memory vs. 3796 MiB of total host memory
+0.01.832.162 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.02.239.658 W llama_context: n_ctx_seq (512) < n_ctx_train (32768) -- the full capacity of the model will not be utilized
+0.02.319.954 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+0.02.672.803 I 
+0.02.673.009 I system_info: n_threads = 4 (n_threads_batch = 4) / 4 | CPU : NEON = 1 | ARM_FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.02.673.039 I perplexity: tokenizing the input ..
+0.04.971.863 I perplexity: tokenization took 2298.81 ms
+0.04.972.952 I perplexity: calculating perplexity over 20 chunks, n_ctx=512, batch_size=2048, n_seq=4
+5.07.495.153 I perplexity: 302.52 seconds per pass - ETA 25.18.957.461 I Final estimate: PPL = 11.3155 +/- 0.43466
+
