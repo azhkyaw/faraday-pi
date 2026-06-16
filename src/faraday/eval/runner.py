@@ -5,6 +5,7 @@ unit-test off-Pi; run() is exercised by the Pi integration (Plan 2).
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from faraday.config import Settings
@@ -89,7 +90,13 @@ def build_retriever(chunk_size: int, overlap: int, settings: Settings):
 def run(retriever_factory=None, llm=None) -> None:
     """Full grid on the Pi: ingest ONCE per chunk-size, then share that retriever
     across the top_k engines (the ingest is the expensive part; a RagEngine is cheap).
-    Factories injectable so the grid logic unit-tests off-Pi."""
+    Factories injectable so the grid logic unit-tests off-Pi.
+
+    M5 GBNF re-measure env overrides: FARADAY_EVAL_CONFIGS=slug[,slug] restricts the
+    grid to those configs (skipping the ingest of any chunk-size none of them need);
+    FARADAY_EVAL_RAW_DIR redirects the raw output (so a grammar run lands beside, not
+    over, the committed baseline). settings.use_grammar toggles the citation grammar."""
+    from faraday.grammar import build_citation_grammar
     from faraday.rag import RagEngine
 
     settings = Settings.from_env()
@@ -103,17 +110,26 @@ def run(retriever_factory=None, llm=None) -> None:
         # 120 s (the app default) killed the k8 cells; hangs are the run monitor's
         # job to catch, not this timeout's.
         llm = HttpLLMClient(settings, timeout=1800.0)
+    gb = build_citation_grammar if settings.use_grammar else None
+    only = {s for s in os.environ.get("FARADAY_EVAL_CONFIGS", "").split(",") if s}
+    raw_base = Path(os.environ.get("FARADAY_EVAL_RAW_DIR", str(config.RAW_DIR)))
     by_size: dict[int, int] = {}
     for cfg in config.configs():
         by_size[cfg.chunk_size] = cfg.chunk_overlap
     for size, overlap in sorted(by_size.items()):
+        size_slugs = {AblationConfig(top_k=k, chunk_size=size, chunk_overlap=overlap).slug
+                      for k in config.TOP_KS}
+        if only and not (only & size_slugs):
+            continue  # no selected config needs this chunk-size — skip its ingest
         print(f"=== ingest chunk_size={size} (overlap {overlap}) ===", flush=True)
         retriever = make_retriever(size, overlap, settings)
         for top_k in config.TOP_KS:
             cfg = AblationConfig(top_k=top_k, chunk_size=size, chunk_overlap=overlap)
+            if only and cfg.slug not in only:
+                continue
             print(f"--- {cfg.slug} ---", flush=True)
-            engine = RagEngine(retriever, llm, top_k=top_k)
-            made = run_config(cfg, engine, items, _raw_path(cfg))
+            engine = RagEngine(retriever, llm, top_k=top_k, grammar_builder=gb)
+            made = run_config(cfg, engine, items, raw_base / f"{cfg.slug}.jsonl")
             print(f"    recorded {made} new rows", flush=True)
 
 
