@@ -1,6 +1,7 @@
 from faraday.eval.dataset import EvalItem
 from faraday.eval.judge import JudgeVerdict
 from faraday.eval.report import (
+    _ablation_order,
     abstention_cross_check,
     judge_rows,
     load_or_classify_abstentions,
@@ -66,6 +67,21 @@ def test_render_ablation_writes_png(tmp_path):
     out = tmp_path / "ablations.png"
     render_ablation(per_config, out)
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_ablation_order_sorts_by_topk_then_chunksize():
+    # Alphabetical sort gives c1200, c2400, c600 within each top_k; we want
+    # ascending chunk size (c600, c1200, c2400) so the plot/scorecard read cleanly.
+    per_config = {s: {} for s in [
+        "k8_c2400_o400", "k2_c600_o100", "k4_c1200_o200", "k2_c2400_o400",
+        "k8_c600_o100", "k4_c600_o100", "k2_c1200_o200", "k8_c1200_o200",
+        "k4_c2400_o400",
+    ]}
+    assert _ablation_order(per_config) == [
+        "k2_c600_o100", "k2_c1200_o200", "k2_c2400_o400",
+        "k4_c600_o100", "k4_c1200_o200", "k4_c2400_o400",
+        "k8_c600_o100", "k8_c1200_o200", "k8_c2400_o400",
+    ]
 
 
 class BoomJudge:

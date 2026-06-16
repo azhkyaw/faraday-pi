@@ -74,6 +74,16 @@ def abstention_cross_check(rows: list[dict], items_by_id: dict[str, EvalItem],
     return {"abstention_judged": acc, "disagreements": disagreements}
 
 
+def _ablation_order(per_config: dict[str, dict]) -> list[str]:
+    """Order config slugs by (top_k, chunk_size) ascending, so each top_k group
+    reads c600 -> c1200 -> c2400 by size rather than alphabetically (which gives
+    c1200, c2400, c600). Keeps the scorecard table and ablation plot consistent."""
+    def key(slug: str) -> tuple[int, int]:
+        k, c = slug.split("_")[:2]          # "k4", "c1200"
+        return (int(k[1:]), int(c[1:]))
+    return sorted(per_config, key=key)
+
+
 def make_scorecard(per_config: dict[str, dict]) -> str:
     """Markdown table, one row per config, columns = the metric keys present."""
     cols = ["recall_at_k", "mrr", "citation_validity", "abstention_accuracy",
@@ -81,7 +91,7 @@ def make_scorecard(per_config: dict[str, dict]) -> str:
     header = "| config | " + " | ".join(c.replace("_at_k", "@k") for c in cols) + " |"
     sep = "|" + "---|" * (len(cols) + 1)
     lines = ["# Faraday M4b — RAG Eval Scorecard", "", header, sep]
-    for slug in sorted(per_config):
+    for slug in _ablation_order(per_config):
         m = per_config[slug]
         cells = [f"{m.get(c, float('nan')):.3f}" for c in cols]
         lines.append(f"| {slug} | " + " | ".join(cells) + " |")
@@ -91,7 +101,7 @@ def make_scorecard(per_config: dict[str, dict]) -> str:
 def render_ablation(per_config: dict[str, dict], out_path: Path,
                     metric: str = "recall_at_k") -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    slugs = sorted(per_config)
+    slugs = _ablation_order(per_config)
     values = [per_config[s].get(metric, float("nan")) for s in slugs]
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.bar(range(len(slugs)), values)
