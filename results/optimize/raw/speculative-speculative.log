@@ -1,0 +1,66 @@
+returncode=0
+--- stdout ---
+
+
+Summarize the history of crewed spaceflight in three sentences. Space exploration began with unmanned missions in the 1950s, followed by the first crewed mission by NASA in 1961. The first crewed mission by the Soviet Union was in 1961, followed by the first crewed mission by the United States in 1962. Since then, crewed missions have been conducted by both countries, with the United States leading the way in terms of crewed missions. Today, crewed missions are conducted by both countries, but with a focus on longer-duration missions and exploration of new locations beyond Earth's orbit. The first crewed mission by the Soviet
+
+
+
+
+--- stderr ---
+0.00.007.890 I common_init_result: fitting params to device memory ...
+0.00.007.906 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+0.01.167.987 I common_params_fit_impl: projected to use 2258 MiB of host memory vs. 3796 MiB of total host memory
+0.01.825.489 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.03.253.420 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+0.03.866.250 I common_init_result: fitting params to device memory ...
+0.03.866.266 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+0.05.053.694 I common_params_fit_impl: projected to use 1057 MiB of host memory vs. 3796 MiB of total host memory
+0.05.717.340 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.15.415.991 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+2.36.320.118 I encoded   14 tokens in    2.635 seconds, speed:    5.312 t/s
+2.36.320.125 I decoded  130 tokens in  137.997 seconds, speed:    0.942 t/s
+2.36.320.126 I 
+2.36.320.126 I n_draft   = 16
+2.36.320.127 I n_predict = 130
+2.36.320.128 I n_drafted = 464
+2.36.320.128 I n_accept  = 100
+2.36.320.130 I accept    = 21.552%
+2.36.320.130 I 
+2.36.320.131 I draft:
+
+2.36.320.155 I 
+2.36.320.156 I target:
+
+2.36.320.165 I common_perf_print:    sampling time =     145.27 ms
+2.36.320.167 I common_perf_print:    samplers time =      74.76 ms /   130 tokens
+2.36.320.171 I common_perf_print:        load time =    2414.24 ms
+2.36.320.174 I common_perf_print: prompt eval time =   81322.41 ms /   507 tokens (  160.40 ms per token,     6.23 tokens per second)
+2.36.320.177 I common_perf_print:        eval time =       0.00 ms /     1 runs   (    0.00 ms per token,      inf tokens per second)
+2.36.320.178 I common_perf_print:       total time =  152453.96 ms /   508 tokens
+2.36.320.184 I common_perf_print: unaccounted time =   70986.28 ms /  46.6 %      (total - sampling - prompt eval - eval) / (total)
+2.36.320.186 I common_perf_print:    graphs reused =         28
+	Command being timed: "llama-speculative -m /home/pi/faraday/models/qwen2.5-1.5b-instruct-q4_k_m.gguf -md /home/pi/faraday/models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf -p Summarize the history of crewed spaceflight in three sentences. -n 128 --spec-draft-n-max 16"
+	User time (seconds): 565.48
+	System time (seconds): 3.05
+	Percent of CPU this job got: 362%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:36.96
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2917556
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 394868
+	Voluntary context switches: 4318
+	Involuntary context switches: 19347
+	Swaps: 0
+	File system inputs: 769120
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+

@@ -1,0 +1,16 @@
+component,label,prefill_tps,decode_tps,peak_rss_bytes,accept_rate,throttled,notes
+baseline,baseline,7.52,3.9,1257664512,,throttled=0x0,ok
+governor,governor=performance,7.59,3.84,1257590784,,throttled=0x0,ok
+threads,threads=2,3.91,3.0,1257545728,,throttled=0x0,ok
+threads,threads=3,5.79,3.91,1257586688,,throttled=0x0,ok
+batch,ubatch=1024,7.61,3.85,1257742336,,throttled=0x0,ok
+context,ctx=128,7.74,3.87,1197432832,,throttled=0x0,ok
+context,ctx=512,7.55,3.83,1257603072,,throttled=0x0,ok
+context,ctx=1024,7.19,3.85,1272799232,,throttled=0x0,ok
+context,ctx=2048,6.83,3.83,1303416832,,throttled=0x0,ok
+context,ctx=4096,6.22,3.85,1364312064,,throttled=0x0,ok
+ollama,ollama-default,8.07,3.74,,,throttled=0x0,ok
+kvquant,kv=q8_0,7.41,3.83,1247719424,,throttled=0x0,ok
+flashattn,flash_attn,7.6,3.83,1257824256,,throttled=0x0,ok
+speculative,speculative,,0.942,,21.552,throttled=0x0,ok
+stacked_best,stacked_best,5.82,3.84,1257648128,,throttled=0x0,ok

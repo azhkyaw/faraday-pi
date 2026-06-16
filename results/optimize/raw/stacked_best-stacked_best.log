@@ -1,0 +1,34 @@
+returncode=0
+--- stdout ---
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen2 1.5B Q4_K - Medium       |   1.04 GiB |     1.78 B | CPU        |       3 |           pp512 |          5.82 ± 0.00 |
+| qwen2 1.5B Q4_K - Medium       |   1.04 GiB |     1.78 B | CPU        |       3 |           tg128 |          3.84 ± 0.00 |
+
+build: 715b86a (1)
+
+--- stderr ---
+	Command being timed: "llama-bench -m /home/pi/faraday/models/qwen2.5-1.5b-instruct-q4_k_m.gguf -p 512 -n 128 -t 3 -o md"
+	User time (seconds): 2081.58
+	System time (seconds): 1.30
+	Percent of CPU this job got: 299%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 11:36.32
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1228172
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 9
+	Minor (reclaiming a frame) page faults: 57820
+	Voluntary context switches: 1909
+	Involuntary context switches: 91783
+	Swaps: 0
+	File system inputs: 11976
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
