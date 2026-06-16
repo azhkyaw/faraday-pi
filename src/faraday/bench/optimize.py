@@ -85,3 +85,78 @@ def read_done(csv_path: Path) -> set[tuple[str, str]]:
 def load_rows(csv_path: Path) -> list[dict]:
     with Path(csv_path).open(newline="") as f:
         return list(csv.DictReader(f))
+
+
+import os  # noqa: E402  (kept with the other imports conceptually; grouped at top on final lint)
+from collections import defaultdict  # noqa: E402
+
+from faraday.bench import optimize_config  # noqa: E402
+from faraday.bench.optimize_config import CSV_PATH, RAW_DIR  # noqa: E402
+from faraday.bench.sweep import subprocess_runner  # noqa: E402
+
+
+def _is_clean(row: dict) -> bool:
+    return bool(row["decode_tps"]) and "0x0" in str(row["throttled"])
+
+
+def stack_winners(all_cells: list[LeverCell], rows: list[dict]) -> LeverCell:
+    """Per lever-group, pick the single setting whose CLEAN decode beats baseline;
+    union the winners' flags + best governor into one 'stacked_best' cell."""
+    by_label = {r["label"]: r for r in rows}
+    base_decode = float(by_label["baseline"]["decode_tps"])
+    groups: dict[str, list[LeverCell]] = defaultdict(list)
+    for c in all_cells:
+        if c.component in ("governor", "threads", "batch", "kvquant", "flashattn"):
+            groups[c.component].append(c)
+    governor = "ondemand"
+    extra: list[str] = []
+    base_set = set(("-p", "512", "-n", "128"))
+    for comp, comp_cells in groups.items():
+        best_cell, best_dec = None, base_decode
+        for cell in comp_cells:
+            r = by_label.get(cell.label)
+            if not r or not _is_clean(r):
+                continue
+            d = float(r["decode_tps"])
+            if d > best_dec:
+                best_dec, best_cell = d, cell
+        if best_cell is None:
+            continue
+        if comp == "governor":
+            governor = best_cell.governor
+        else:
+            for f in best_cell.flags:
+                if f not in base_set and f not in extra:
+                    extra.append(f)
+    return LeverCell("stacked_best", "stacked_best", governor,
+                     ("-p", "512", "-n", "128", *extra), "llama_bench")
+
+
+def main(run: Runner = subprocess_runner) -> None:
+    model = os.environ["FARADAY_OPT_MODEL"]      # set by scripts/90_optimize.sh
+    draft = os.environ.get("FARADAY_OPT_DRAFT", "")
+    ollama_model = os.environ.get("FARADAY_OPT_OLLAMA", "qwen2.5:1.5b")
+    prompt = "Summarize the history of crewed spaceflight in three sentences."
+    all_cells = optimize_config.cells()
+
+    done = read_done(CSV_PATH)
+    for cell in all_cells:
+        if cell.key in done:
+            continue
+        print(f"--- {cell.component}/{cell.label} ---", flush=True)
+        row = run_cell(cell, run, model=model, draft=draft,
+                       ollama_model=ollama_model, prompt=prompt, raw_dir=RAW_DIR)
+        append_row(CSV_PATH, row)
+        print(f"    decode={row['decode_tps']} throttled={row['throttled']}", flush=True)
+
+    best = stack_winners(all_cells, load_rows(CSV_PATH))
+    if best.key not in read_done(CSV_PATH):
+        print(f"--- {best.component} (gov={best.governor} {' '.join(best.flags)}) ---", flush=True)
+        append_row(CSV_PATH, run_cell(best, run, model=model, draft=draft,
+                                      ollama_model=ollama_model, prompt=prompt, raw_dir=RAW_DIR))
+    # restore the default governor
+    run(_governor_cmd("ondemand"))
+
+
+if __name__ == "__main__":
+    main()
