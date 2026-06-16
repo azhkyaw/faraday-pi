@@ -33,6 +33,11 @@ results/raw/
 results/evals/golden_draft.jsonl
 results/evals/store_*.sqlite
 
+# M4c optimize: keep optimize.csv + plots + leaderboard + findings, AND the per-cell raw
+# tool logs (the audit trail behind optimize.csv -- llama-bench ± stderr + time -v the CSV
+# omits), mirroring M4a. `.log` is globally ignored, so the kept logs need a negation.
+!results/optimize/raw/*.log
+
 # Environment / secrets
 .env
 *.local
