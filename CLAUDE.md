@@ -57,6 +57,15 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - **The Pi's llama.cpp build has only `llama-bench`/`-cli`/`-server`**, not
   `llama-perplexity` (M4a's quality axis needs it). Build a missing tool against the
   existing libs: `cmake --build ~/llama.cpp/build --target llama-perplexity -j3`.
+- **The Pi's llama.cpp build drifts ahead of any plan's assumed CLI — verify flags against
+  live `--help`/`-h`, not docs.** M4c hit three arg/parser drifts: `llama-bench` now *requires*
+  an arg for `-fa` (`-fa on`; bare `-fa` is rejected and prints usage → `parse_llama_bench`
+  sees no `pp/tg` rows); `llama-speculative` removed `--draft-max` (use `--spec-draft-n-max`);
+  and real `llama-speculative` prints *two* `speed:` lines (an `encoded`/prefill line + a
+  `decoded` line) so a naive "first `speed:`" regex records prefill as decode. A rejected flag
+  fails *fast* with a tiny RSS (~11 MB, no model load) — a tidy tell. `run_cell`'s try/except
+  turns each into a recorded `notes` row (not a run-killer), and the persisted `raw/` log let
+  the parser bug be fixed by **re-parsing, not re-benchmarking**.
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
   benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
@@ -127,20 +136,30 @@ inference lab) in progress, all on `main`:
   `results/evals/`: scorecard.md, ablations.png, findings.md + the raw rows (3 MB) + frozen
   judge caches, all committed for reproducibility (re-score via `report.py`, no Pi run / no
   API re-spend; `ANTHROPIC_API_KEY` lives in `~/.faraday_env` on the Pi — source, never echo).
-- **M4c optimization** — **fully designed: spec (`fbdbf51`) + plan (`35ae99a`); pending
-  execution** (needs a quiet board — sequence after the M4a closeout + M4b run).
-  Ablate-then-stack tuning waterfall (governor/threads/batch/KV-quant/flash-attn/overclock)
-  + speculative decoding + Ollama baseline + TTFT-vs-context, on 1.5B Q4_K_M, extending
-  `faraday.bench`.
+- **M4c optimization — ✅ COMPLETE 2026-06-17.** Resumable ablate-then-stack harness
+  (`faraday.bench.optimize*`, 18 unit tests) + 15-cell sweep on 1.5B Q4_K_M (clean, `0x0`
+  throughout). **Verdict: the appliance already ships at its throughput optimum — no CPU
+  lever beats baseline decode (~3.9 tok/s).** Decode is memory-bandwidth-bound (flat 3.83–3.91
+  across governor/threads/batch/KV-quant/flash-attn *and* context depth — confirms M4a's
+  `≈3.8 GB/s ÷ model_bytes` 15 more ways); prefill is compute-bound (collapses 7.74→6.22 over
+  ctx 128→4096). **Speculative decoding is counterproductive on CPU** (0.942 tok/s, ~4× slower,
+  21.6% draft accept — the GPU technique inverts on a bandwidth-bound board); Ollama −4%;
+  `stacked_best` (`-t 3`) is net-negative (starves prefill). THREE live-tooling CLI/parser
+  drifts caught + fixed (llama-bench needs `-fa on`; llama-speculative `--draft-max`→
+  `--spec-draft-n-max`; `parse_speculative` must read the `decoded` line, not the `encoded`
+  prefill line — re-derived from the persisted raw log, **no re-benchmark**). Artifacts in
+  `results/optimize/`: optimize.csv, leaderboard.md, 3 plots, findings.md + per-cell raw logs
+  (re-plot via `optimize_plot`, no Pi run). Overclock left as a separate reboot-gated manual
+  step (not run — keeps the shipped clock as baseline of record).
 
 Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
 "polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,
 **plus** hardening (systemd auto-start/restart-on-crash — the M3 stale-process fix — Docker
 packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
 (spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
-never overlap benchmark runs) — with M4a–c planned too, **everything remaining in the
-project is execute-only**: **M4b ✅ → M4c run → M5**. **The board is FREE** (M4b complete);
-next is **M4c** — the quiet-board optimization study (plan `35ae99a`). ⚠️ Before M4c, **reconcile the Pi worktree** — it's still on `m4b-eval-data-run` @
-`53719fc` and dirty (scp'd `report.py`/`test_eval_report.py` + untracked
-`results/evals/{raw,judge,scorecard,stores}`); simplest is to branch M4c off `main` and
-hard-reset the Pi's worktree to it.
+never overlap benchmark runs). **All of M4 is now ✅ COMPLETE (a/b/c); the only milestone left
+is M5 → v1.0 tag** — everything remaining is execute-only. **The board is FREE.** The Pi
+worktree is on `m4c-optimization` (merged to `main` at the M4c close); `ollama` + the 0.5B
+draft (`Qwen2.5-0.5B-Instruct-Q4_K_M.gguf`) + a freshly-built `llama-speculative` are now on
+it (M4c bootstrap). M4c's verdict reframes M5: the appliance is *already throughput-optimal*
+(the decode ceiling is physics), so M5's remaining value is hardening/UX/report, not tuning.
