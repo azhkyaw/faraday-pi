@@ -25,8 +25,9 @@ def build_argv(cell: LeverCell, *, model: str, draft: str,
     if cell.kind == "llama_bench":
         return ["/usr/bin/time", "-v", "llama-bench", "-m", model, *cell.flags, "-o", "md"]
     if cell.kind == "speculative":
+        # this llama.cpp build renamed --draft-max -> --spec-draft-n-max (draft-model speculation)
         return ["/usr/bin/time", "-v", "llama-speculative", "-m", model, "-md", draft,
-                "-p", prompt, "-n", "128", "--draft-max", "16"]
+                "-p", prompt, "-n", "128", "--spec-draft-n-max", "16"]
     if cell.kind == "ollama":
         return ["ollama", "run", "--verbose", ollama_model, prompt]
     raise ValueError(f"unknown cell kind: {cell.kind!r}")
