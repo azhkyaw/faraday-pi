@@ -41,9 +41,14 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
   `Sources`→`Token`→`Done` event seam (also the metrics instrumentation point).
 - **Persist benchmark raw data**: commit the raw audit trail behind every benchmark (M4a's
   per-cell `*.log` with ppl ±stderr + provenance; M4b's `raw/` rows + frozen `judge/`
-  verdicts) so analysis re-runs with no Pi run / no API re-spend — gitignore only regenerable
-  binaries (`*.sqlite` stores) + pre-curation drafts. `.log` is globally ignored, so kept logs
-  need a negation (`!results/sweep/raw/*.log`).
+  verdicts; M4c's per-cell `raw/*.log` with llama-bench `±` + `time -v`) so analysis re-runs
+  with no Pi run / no API re-spend — gitignore only regenerable binaries (`*.sqlite` stores,
+  model GGUFs) + pre-curation drafts. The **unit is the per-cell measurement**, not the
+  orchestration run-log (transient narrative — M4c's `/tmp` sweep log was 97% download-progress
+  spam and held nothing the per-cell logs didn't). `.log` is globally ignored, so kept logs
+  need a negation (`!results/sweep/raw/*.log`, `!results/optimize/raw/*.log`) — write it in
+  `.gitignore` *before* the run so a plain `git add results/<x>/` sweeps them in (M4c baked it
+  in up front; M4b had to add the raw data after the fact).
 
 ## Gotchas (learned the hard way)
 
