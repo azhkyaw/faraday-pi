@@ -66,7 +66,10 @@ def parse_time_v(text: str) -> int:
 _OLLAMA_PROMPT_RE = re.compile(r"prompt eval rate:\s*([0-9.]+)")
 _OLLAMA_EVAL_RE = re.compile(r"(?m)^\s*eval rate:\s*([0-9.]+)")  # line-anchored: not "prompt eval rate"
 _SPEC_ACCEPT_RE = re.compile(r"accept\s*=\s*([0-9.]+)\s*%")
-_SPEC_SPEED_RE = re.compile(r"speed:\s*([0-9.]+)\s*t/s")
+# llama-speculative prints TWO "speed:" lines — an "encoded" (prefill) line and a
+# "decoded" (generation) line. Anchor on "decoded" so we record the decode speed,
+# not the prefill speed (which would wrongly look like the fastest cell).
+_SPEC_SPEED_RE = re.compile(r"decoded\s+\d+\s+tokens.*?speed:\s*([0-9.]+)\s*t/s")
 
 
 def parse_ollama_bench(text: str) -> tuple[float, float]:

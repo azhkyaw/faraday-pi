@@ -20,7 +20,8 @@ n_drafted = 144
 n_accept  = 95
 accept    = 65.97%
 
-decoded 128 tokens in 30.50 s, speed: 4.20 t/s
+encoded   14 tokens in  2.64 seconds, speed: 5.31 t/s
+decoded  128 tokens in 30.50 seconds, speed: 4.20 t/s
 """
 
 
