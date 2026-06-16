@@ -24,9 +24,12 @@ app.mount("/metrics", make_asgi_app())
 
 def make_engine(settings: Settings):
     """Build a per-request engine + store (caller closes the store)."""
+    from faraday.grammar import build_citation_grammar
     store = SqliteVecStore(settings.db_path, dim=settings.embed_dim)
+    gb = build_citation_grammar if settings.use_grammar else None
     engine = RagEngine(Retriever(HttpEmbedder(settings), store), HttpLLMClient(settings),
-                       top_k=settings.top_k, max_tokens=settings.max_tokens)
+                       top_k=settings.top_k, max_tokens=settings.max_tokens,
+                       grammar_builder=gb)
     return engine, store
 
 

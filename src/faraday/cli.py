@@ -28,8 +28,10 @@ def ask(question: str, db: str = Settings().db_path):
     """Answer a question from the indexed documents (fully offline)."""
     s = Settings.from_env()
     store = SqliteVecStore(db, dim=s.embed_dim)
+    from faraday.grammar import build_citation_grammar
+    gb = build_citation_grammar if s.use_grammar else None
     engine = RagEngine(Retriever(HttpEmbedder(s), store), HttpLLMClient(s),
-                       top_k=s.top_k, max_tokens=s.max_tokens)
+                       top_k=s.top_k, max_tokens=s.max_tokens, grammar_builder=gb)
     ans = engine.answer(question)
     store.close()
     typer.echo("\n" + ans.text + "\n")
