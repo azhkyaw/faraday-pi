@@ -5,11 +5,13 @@ off the Pi; main() (path resolution + the full sweep) runs on the Pi.
 from __future__ import annotations
 
 import csv
+import os
+from collections import defaultdict
 from pathlib import Path
 
-from faraday.bench import parsers
-from faraday.bench.optimize_config import CSV_COLUMNS, LeverCell
-from faraday.bench.sweep import Completed, Runner
+from faraday.bench import optimize_config, parsers
+from faraday.bench.optimize_config import CSV_COLUMNS, CSV_PATH, RAW_DIR, LeverCell
+from faraday.bench.sweep import Completed, Runner, subprocess_runner
 
 
 def _governor_cmd(gov: str) -> list[str]:
@@ -85,14 +87,6 @@ def read_done(csv_path: Path) -> set[tuple[str, str]]:
 def load_rows(csv_path: Path) -> list[dict]:
     with Path(csv_path).open(newline="") as f:
         return list(csv.DictReader(f))
-
-
-import os  # noqa: E402  (kept with the other imports conceptually; grouped at top on final lint)
-from collections import defaultdict  # noqa: E402
-
-from faraday.bench import optimize_config  # noqa: E402
-from faraday.bench.optimize_config import CSV_PATH, RAW_DIR  # noqa: E402
-from faraday.bench.sweep import subprocess_runner  # noqa: E402
 
 
 def _is_clean(row: dict) -> bool:
