@@ -23,10 +23,10 @@ data/
 results/raw/
 *.log
 
-# M4b eval: ignore raw run rows, frozen judge caches, the draft, and scratch stores;
-# keep golden.jsonl, scorecard.md, ablations.png, findings.md, SOURCES.md.
-results/evals/raw/
-results/evals/judge/
+# M4b eval: keep the structured run data -- raw rows + frozen judge caches -- in the
+# repo for reproducibility (the scorecard/findings derive from them; ~3 MB total),
+# alongside golden.jsonl, scorecard.md, ablations.png, findings.md, SOURCES.md.
+# Ignore only the pre-curation draft and the regenerable binary vector stores.
 results/evals/golden_draft.jsonl
 results/evals/store_*.sqlite
 
