@@ -114,7 +114,7 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 
 ## State
 
-**M0–M5 COMPLETE — shipped as v1.0** (bring-up · RAG core+CLI · streaming web chat ·
+**M0–M5 COMPLETE — merged to `main`; `v1.0` tag held for the deferred demo GIF** (bring-up · RAG core+CLI · streaming web chat ·
 observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative M5). All on `main`:
 
 - **M4a quant sweep — ✅ COMPLETE, signed off 2026-06-10.** Final 18-cell artifacts +
@@ -160,7 +160,7 @@ observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative 
   (re-plot via `optimize_plot`, no Pi run). Overclock left as a separate reboot-gated manual
   step (not run — keeps the shipped clock as baseline of record).
 
-- **M5 polish & ship — ✅ COMPLETE 2026-06-17, shipped as v1.0.** Phase 1 (hardening): **GBNF
+- **M5 polish & ship — ✅ COMPLETE 2026-06-17 (merged to `main`; `v1.0` tag held pending the demo GIF).** Phase 1 (hardening): **GBNF
   citations** (per-request grammar → `LLMClient`/`RagEngine` DI → `FARADAY_USE_GRAMMAR` flag;
   live-proven the OAI endpoint honors `grammar`; before/after = validity **1.000 by
   construction**, recall 0.805 / abstention 0.872 unchanged); **startup memory guard**
@@ -173,8 +173,9 @@ observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative 
   118 unit tests pass, `0x0` throughout. As-built:
   `docs/superpowers/plans/2026-06-10-faraday-m5-as-built.md`.
 
-Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **The project is shipped
-(v1.0).** The Pi is now **systemd-managed** (gen/embed/app auto-start on boot, restart on
+Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **The project is merged to
+`main` and functionally complete; the `v1.0` tag is held until the deferred demo GIF lands**
+(then: commit the GIF + `git tag -a v1.0 && git push origin v1.0`). The Pi is now **systemd-managed** (gen/embed/app auto-start on boot, restart on
 crash) and has `ollama` + the 0.5B draft + a built `llama-speculative` from the M4c run. Open
 follow-ups: the deferred demo GIF; the optional reboot-gated overclock study; and the
 "next steps" in `docs/report.md` §9 (reranker, energy axis, Pi 5/NPU). M4/M5 verdict: the
