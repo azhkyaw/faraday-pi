@@ -2,7 +2,9 @@
 
 **A private RAG appliance on a Raspberry Pi 4 — ask questions about your own documents, get cited answers, with zero network egress.**
 
-![Faraday answering a question offline, with sources](docs/assets/demo.gif)
+<!-- Hero demo GIF — record per docs/assets/README.md, then uncomment the line below:
+![Faraday answering a document question offline, with cited sources](docs/assets/demo.gif)
+-->
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
@@ -22,11 +24,12 @@ Every number is measured on hardware (`get_throttled=0x0`) and links its raw art
 
 The one-line recommendation for *anyone* putting an LLM on a Pi 4: see the **[Pi-4 leaderboard](docs/pi4-leaderboard.md)**.
 
-## Why it's interesting
+## What sets it apart
 
 - **Fully offline / private** — generation *and* embeddings run on-device; no cloud, no API calls at serve time. The privacy story *requires* the edge.
 - **Engineered, not assembled** — quantization, retrieval, throughput, and memory are *measured*, not guessed; every speed number is paired with a measured quality number.
 - **Reproducible & honest** — bare OS to running appliance in one command; raw audit data for every benchmark is committed, so any result re-derives with no re-run.
+- **Shipped, not just demoed** — systemd boot/crash survival, a startup memory guard, and an app container; pull the plug and it answers questions again on its own, no SSH.
 
 ## Hardware & stack
 
