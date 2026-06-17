@@ -20,10 +20,12 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 - Ports: gen llama-server `:8080`, embed `:8081`, FastAPI app `:8000`.
 - Models in `~/faraday/models`: Qwen2.5-1.5B-Instruct Q4_K_M (gen) + bge-small-en-v1.5 f16
   (embed, 384-dim). Default model is 1.5B for the 4GB board; 3B is M4-exploratory only.
-- Run: `scripts/30_run_servers.sh` (servers), `40_smoke_test.sh` (health), `60_run_app.sh`
-  (web app), `70_quant_sweep.sh` (M4a quant sweep, on the Pi); `faraday ingest|ask|serve`
-  (CLI); monitoring via `docker compose -f monitoring/docker-compose.yml up -d` (dev
-  machine, Docker).
+- Run: **`scripts/bootstrap.sh`** (fresh Pi → running appliance in one shot; installs the
+  **systemd** units so servers auto-start on boot — `systemctl status/restart faraday-app`).
+  Studies: `70_quant_sweep.sh` (M4a) · `90_optimize.sh` (M4c) · `80_run_evals.sh` (M4b) ·
+  `95_gbnf_measure.sh` (GBNF). Also `40_smoke_test.sh` (health), `30_run_servers.sh` (manual
+  servers for a quiet-board benchmark); `faraday ingest|ask|serve` (CLI); monitoring via
+  `docker compose -f monitoring/docker-compose.yml up -d` (dev machine, Docker).
 
 ## Conventions
 
@@ -57,7 +59,8 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
   args (`python3 -m json.tool <file>`), or pipe a file to `python3 -`.
 - **`pkill -f foo` matches itself over SSH** and kills the session — use `pkill -f '[f]oo'`.
 - **Long-running Pi processes serve stale code** until restarted (`git push` updates files,
-  not a running process's memory) — restart `faraday serve` after server changes.
+  not a running process's memory) — `sudo systemctl restart faraday-app` after app changes
+  (servers are systemd-managed since M5).
 - **Build llama.cpp with `-j3`, not `-j4`** — four parallel compilers OOM the 4GB board.
 - **The Pi's llama.cpp build has only `llama-bench`/`-cli`/`-server`**, not
   `llama-perplexity` (M4a's quality axis needs it). Build a missing tool against the
@@ -102,17 +105,17 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
   ~4.3 k tokens (1.5B Q4_K_M). Price long-context batch runs by prompt tokens, not per
   question (k8_c2400 ≈ 13 min/answer). The eval grid's biggest cell also needs
   `GEN_CTX=8192` (exported by `80_run_evals.sh`; appliance default 4096).
-- **The app/servers aren't daemons** — nothing auto-starts on boot, so after a Pi
-  reboot/power-cycle re-run `scripts/30_run_servers.sh` (+ start the app). To keep the app
-  alive after you close *your* SSH session, start it detached:
-  `setsid nohup faraday serve --host 0.0.0.0 --port 8000 >/tmp/app.log 2>&1 </dev/null &`
-  (this does NOT survive a Pi shutdown — only start-on-boot does). Start-on-boot +
-  restart-on-crash via a systemd unit is the M5 hardening item.
+- **The servers are systemd-managed (M5)** — `faraday-llama-gen`/`-embed`/`-app` auto-start on
+  boot and restart on crash (verified `RESTART-OK` + `BOOT-OK`). Install/repair with
+  `bash deploy/systemd/install.sh`; check `systemctl status faraday-app`. **After `git push pi`
+  of app code the running app serves stale code — `sudo systemctl restart faraday-app`.** (The
+  pre-M5 manual launcher `scripts/30_run_servers.sh` still works for a quiet-board benchmark
+  where you don't want the app competing — `sudo systemctl stop faraday-*` first.)
 
 ## State
 
-M0–M3 complete (bring-up · RAG core+CLI · streaming web chat · observability). **M4** (the
-inference lab) in progress, all on `main`:
+**M0–M5 COMPLETE — shipped as v1.0** (bring-up · RAG core+CLI · streaming web chat ·
+observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative M5). All on `main`:
 
 - **M4a quant sweep — ✅ COMPLETE, signed off 2026-06-10.** Final 18-cell artifacts +
   findings + per-cell raw logs (ppl ±stderr, build hash, `time -v`) in `results/sweep/`
@@ -157,14 +160,22 @@ inference lab) in progress, all on `main`:
   (re-plot via `optimize_plot`, no Pi run). Overclock left as a separate reboot-gated manual
   step (not run — keeps the shipped clock as baseline of record).
 
-Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **M5** (final —
-"polish & ship") = technical report tying the M4 studies together + demo + README/leaderboard,
-**plus** hardening (systemd auto-start/restart-on-crash — the M3 stale-process fix — Docker
-packaging, security) + the GBNF citations deferred from M2. **M5 is fully designed**
-(spec `2a63501` + plan `fd69961`; 15 tasks, two gated phases; reboot/systemd tests must
-never overlap benchmark runs). **All of M4 is now ✅ COMPLETE (a/b/c); the only milestone left
-is M5 → v1.0 tag** — everything remaining is execute-only. **The board is FREE.** The Pi
-worktree is on `m4c-optimization` (merged to `main` at the M4c close); `ollama` + the 0.5B
-draft (`Qwen2.5-0.5B-Instruct-Q4_K_M.gguf`) + a freshly-built `llama-speculative` are now on
-it (M4c bootstrap). M4c's verdict reframes M5: the appliance is *already throughput-optimal*
-(the decode ceiling is physics), so M5's remaining value is hardening/UX/report, not tuning.
+- **M5 polish & ship — ✅ COMPLETE 2026-06-17, shipped as v1.0.** Phase 1 (hardening): **GBNF
+  citations** (per-request grammar → `LLMClient`/`RagEngine` DI → `FARADAY_USE_GRAMMAR` flag;
+  live-proven the OAI endpoint honors `grammar`; before/after = validity **1.000 by
+  construction**, recall 0.805 / abstention 0.872 unchanged); **startup memory guard**
+  (`preflight.py`); **systemd units** (gen→embed→app, sandboxed) — live-verified `RESTART-OK`
+  (SIGKILL→restart) + `BOOT-OK` (reboot→all 3 auto-recover), the M3 stale-process fix;
+  **one-shot `bootstrap.sh`**; **app Docker image** (+ package-data fix); **retrieval recall
+  gate** (≥0.70, eval-as-test, ~15 min). Phase 2: **`docs/report.md`** (engineering write-up),
+  **`docs/pi4-leaderboard.md`**, **final README**. Deferred: the airplane-mode **demo GIF**
+  (recipe in the M5 as-built; README hero is a documented placeholder under `docs/assets/`).
+  118 unit tests pass, `0x0` throughout. As-built:
+  `docs/superpowers/plans/2026-06-10-faraday-m5-as-built.md`.
+
+Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **The project is shipped
+(v1.0).** The Pi is now **systemd-managed** (gen/embed/app auto-start on boot, restart on
+crash) and has `ollama` + the 0.5B draft + a built `llama-speculative` from the M4c run. Open
+follow-ups: the deferred demo GIF; the optional reboot-gated overclock study; and the
+"next steps" in `docs/report.md` §9 (reranker, energy axis, Pi 5/NPU). M4/M5 verdict: the
+appliance is *already throughput-optimal* (the decode ceiling is physics).
