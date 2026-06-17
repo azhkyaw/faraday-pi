@@ -1,0 +1,17 @@
+[Unit]
+Description=Faraday RAG web app (:8000)
+After=faraday-llama-gen.service faraday-llama-embed.service
+Wants=faraday-llama-gen.service faraday-llama-embed.service
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/faraday
+ExecStart=/home/pi/faraday/.venv/bin/faraday serve --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

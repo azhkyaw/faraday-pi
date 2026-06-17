@@ -1,0 +1,16 @@
+[Unit]
+Description=Faraday embedding llama-server (:8081)
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/faraday
+ExecStart=/home/pi/llama.cpp/build/bin/llama-server -m /home/pi/faraday/models/bge-small-en-v1.5-f16.gguf --embeddings --metrics -t 4 --host 0.0.0.0 --port 8081
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
