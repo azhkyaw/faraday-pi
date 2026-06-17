@@ -1,0 +1,13 @@
+# Run the Faraday app off-Pi against the Pi's llama-servers:
+#   FARADAY_PI_HOST=192.168.100.59 docker compose up --build
+services:
+  faraday-app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      FARADAY_GEN_URL: "http://${FARADAY_PI_HOST:-192.168.100.59}:8080"
+      FARADAY_EMBED_URL: "http://${FARADAY_PI_HOST:-192.168.100.59}:8081"
+      FARADAY_DB: /app/data/faraday.sqlite
+    volumes:
+      - ./data:/app/data
