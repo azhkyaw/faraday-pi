@@ -2,89 +2,88 @@
 
 **A private RAG appliance on a Raspberry Pi 4 — ask questions about your own documents, get cited answers, with zero network egress.**
 
+![Faraday answering a question offline, with sources](docs/assets/demo.gif)
+
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
-> **Status:** 🟢 **M0–M3 complete** — a local RAG appliance answering cited questions fully offline (CLI + token-streaming web chat), with a live Prometheus/Grafana dashboard (69 tests green, proven on hardware).  🚧 **M4 in progress** — the inference lab: **M4a ✅** the [18-cell quant-sweep frontier](results/sweep/findings.md) is final (verdict: run **1.5B Q4_K_M**; decode is bandwidth-bound at ≈3.8 GB/s; 3B fits but fails interactivity), the RAG-eval engine is merged, and the optimization study is designed.
+> **Status:** 🟢 **Shipped (M0–M5 complete).** A private, always-on RAG appliance: cited answers fully offline (CLI + streaming web chat), grammar-guaranteed citations, systemd boot/crash survival, one-command bootstrap, and the full inference study behind every design choice. Read the **[technical report](docs/report.md)**.
+
+## Results at a glance
+
+Every number is measured on hardware (`get_throttled=0x0`) and links its raw artifact.
+
+| Question | Answer (measured) | Study |
+|---|---|---|
+| **Which model?** | **1.5B Q4_K_M** — the quality/footprint knee: 11.32 ppl, 1.07 GB, 3.86 tok/s | [M4a](results/sweep/findings.md) |
+| **How fast can it go?** | ~3.9 tok/s decode — a **memory-bandwidth ceiling**; no CPU lever beats it, speculative decoding is 4× *slower* on CPU | [M4c](results/optimize/findings.md) |
+| **Is it any good?** | recall@4 ~0.80, faithfulness **4.22**/5, correctness **3.95**/5 (chunk 1200 / top_k 4) | [M4b](results/evals/findings.md) |
+| **Can it hallucinate citations?** | No — GBNF makes an out-of-range citation **undecodable**; validity **1.000 by construction** | [GBNF](results/evals/gbnf_before_after.md) |
+| **Does it survive a power cut?** | Yes — systemd auto-recovers all services (`RESTART-OK` + `BOOT-OK`), no intervention | M5 |
+
+The one-line recommendation for *anyone* putting an LLM on a Pi 4: see the **[Pi-4 leaderboard](docs/pi4-leaderboard.md)**.
 
 ## Why it's interesting
 
 - **Fully offline / private** — generation *and* embeddings run on-device; no cloud, no API calls at serve time. The privacy story *requires* the edge.
-- **Engineered, not just assembled** — quantization, KV-cache, and memory are measured and optimized, not guessed. Every speed number gets paired with a measured quality number (M4).
-- **Reproducible** — bare OS to running appliance via committed runbook scripts.
+- **Engineered, not assembled** — quantization, retrieval, throughput, and memory are *measured*, not guessed; every speed number is paired with a measured quality number.
+- **Reproducible & honest** — bare OS to running appliance in one command; raw audit data for every benchmark is committed, so any result re-derives with no re-run.
 
 ## Hardware & stack
 
-- **Raspberry Pi 4 (4 GB)** · Cortex-A72 · Raspberry Pi OS Lite 64-bit (Debian 13)
-- **llama.cpp** (CPU inference, NEON) serving **Qwen2.5-1.5B-Instruct** (Q4_K_M) + **bge-small-en-v1.5** embeddings
-- **sqlite-vec** single-file vector store · **FastAPI** (M2) · **Prometheus + Grafana** (M3) · **Python 3.13**
+- **Raspberry Pi 4 (4 GB)** · Cortex-A72 · Raspberry Pi OS Lite 64-bit
+- **llama.cpp** (CPU, NEON) serving **Qwen2.5-1.5B-Instruct Q4_K_M** (gen) + **bge-small-en-v1.5** (embeddings)
+- **sqlite-vec** single-file vector store · **FastAPI** + SSE streaming · **systemd** (always-on) · **Prometheus + Grafana** (off-Pi) · **Python 3.11+**
 
-## Validated baseline (M0)
+## Quickstart
 
-| | |
-|---|---|
-| Decode | 3.87 tok/s |
-| Prefill | 7.71 tok/s |
-| Throttling | none (`get_throttled=0x0`, full 1.5 GHz) |
-| Honest RAM footprint | ~1.3 GB resident (gen + embed), ~2.4 GB free |
-
-Detail: [results/baseline](results/baseline/README.md) · [M0 as-built & findings](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md)
-
-## Reproduce M0
-
-On a Pi 4 reachable over SSH (key auth + passwordless sudo), deploy the repo to the Pi, then on the Pi:
+On a fresh Raspberry Pi OS (64-bit), clone the repo to `~/faraday` and run one command:
 
 ```bash
-bash scripts/00_pi_setup.sh        # toolchain (build-essential, cmake, git, python venv)
-bash scripts/10_build_llama.sh     # clone + build llama.cpp (NEON, -j3)
-bash scripts/20_download_models.sh # fetch the gen + embedding GGUFs into a venv
-bash scripts/30_run_servers.sh     # launch gen :8080 + embed :8081
-bash scripts/40_smoke_test.sh      # verify both APIs respond
+git clone https://github.com/azhkyaw/faraday ~/faraday && cd ~/faraday
+bash scripts/bootstrap.sh
 ```
 
-## Use it
-
-Once the llama-servers are up (`scripts/30_run_servers.sh`), index documents and ask — two interfaces over the same offline RAG core:
+That installs deps, builds llama.cpp, fetches the models, sets up the venv, installs the three **systemd** units, and smoke-tests — leaving Faraday **live on `:8000` and surviving reboots**. Then index documents and ask:
 
 ```bash
-# CLI (M1)
 faraday ingest examples/corpus
 faraday ask "What CPU does the Raspberry Pi 4 use?"
-#   → "...a quad-core ARM Cortex-A72 (64-bit) CPU. [1]"  Sources: [1] pi-facts.md (0.855)
-
-# Web app (M2) — token-streaming chat with live sources
-bash scripts/60_run_app.sh         # serves on 0.0.0.0:8000
-#   then open http://raspberrypi.local:8000 in a browser
+#   → "...a quad-core ARM Cortex-A72 (64-bit) CPU. [1]"   Sources: [1] pi-facts.md (0.855)
 ```
 
-The web app streams the answer token-by-token over SSE (`sources` → `token` → `done`), shows the retrieved sources with scores, and flags any hallucinated citations — all fully offline.
+…or open the streaming web chat at `http://raspberrypi.local:8000` — it streams tokens over SSE (`sources → token → done`), shows retrieved sources with scores, and (with `FARADAY_USE_GRAMMAR=1`) constrains citations to valid sources by construction.
 
-### Live monitoring (M3)
+**Run the app off-Pi (Docker):** the FastAPI app containerizes (the llama-servers stay native on the Pi); `FARADAY_PI_HOST=<pi-ip> docker compose up --build`.
 
-The Pi exposes Prometheus metrics (RAG: TTFT, decode tok/s, retrieval latency, citation validity; host: CPU temp, throttle, llama-server RSS) at `:8000/metrics`, plus the llama-servers' native metrics. Prometheus + Grafana run **off-Pi** (keeping the 4 GB budget free) via Docker Compose:
+## Operating it
+
+The servers are **systemd-managed** — they start on boot and restart on crash:
 
 ```bash
-# on the dev machine, with Docker running:
-docker compose -f monitoring/docker-compose.yml up -d
-#   Prometheus targets → http://localhost:9090/targets   (all three UP)
-#   Grafana dashboard  → http://localhost:3000           ("Faraday")
+sudo systemctl status faraday-app faraday-llama-gen faraday-llama-embed
+# after pushing code that changes the app:
+sudo systemctl restart faraday-app
 ```
 
-The dashboard renders the exact numbers Faraday previously measured by hand — TTFT, decode tok/s, Pi temp, RSS, hallucination counts — now continuous. See [`monitoring/README.md`](monitoring/README.md) (set your Pi's LAN IP in `prometheus.yml`; mDNS `.local` doesn't resolve inside containers).
+### Live monitoring
+
+The Pi exposes Prometheus metrics (RAG: TTFT, decode tok/s, retrieval latency, citation validity; host: CPU temp, throttle, RSS) at `:8000/metrics`. Prometheus + Grafana run **off-Pi** (keeping the 4 GB budget free) via Docker Compose — see [`monitoring/README.md`](monitoring/README.md).
 
 ## Repo layout
 
 ```
-docs/superpowers/specs/   design specs (the "what & why")
-docs/superpowers/plans/   implementation plans + M0–M3 as-built records
-scripts/                  reproducible runbook (00 → 60: bring-up + run app)
-monitoring/               off-Pi Prometheus + Grafana stack (Docker Compose)
-results/                  benchmark + eval results
-src/faraday/              the RAG application (engine, CLI, server, web UI, metrics)
+docs/report.md            the engineering write-up (start here)
+docs/pi4-leaderboard.md   what runs well on a Pi 4, measured
+docs/superpowers/         design specs, plans, per-milestone as-builts
+scripts/                  bootstrap + reproducible runbook (bring-up → studies)
+deploy/systemd/           the three units + installer
+results/                  benchmark + eval results (with raw audit data)
+src/faraday/              the RAG application (engine, CLI, server, web UI, metrics, grammar)
 ```
 
 ## Dev workflow
 
-Code is authored on a Windows dev machine and deployed to the Pi with `git push pi` — the Pi hosts a repo configured with `receive.denyCurrentBranch=updateInstead`, so its working tree updates on every push, pinned to an exact commit. *Develop where you deploy.* See [`scripts/sync.ps1`](scripts/sync.ps1).
+Code is authored on a Windows dev machine and deployed to the Pi with `git push pi` — the Pi hosts a repo configured `receive.denyCurrentBranch=updateInstead`, so its working tree updates on every push. *Develop where you deploy*, then `sudo systemctl restart faraday-app`.
 
 ## Roadmap
 
@@ -94,13 +93,12 @@ Code is authored on a Windows dev machine and deployed to the Pi with `git push 
 | **M1** | RAG core: ingest → retrieve → ground → answer → verify-citations (CLI) | ✅ |
 | **M2** | Serving: FastAPI + SSE token streaming + web chat UI | ✅ |
 | **M3** | Observability: Prometheus + Grafana (RAG + host metrics) | ✅ |
-| **M4** | The lab: quantization sweep, RAG evals, optimization study, GBNF citations | 🚧 |
-| **M5** | Polish: technical report, demo, hardening | |
+| **M4** | The lab: quant sweep (M4a) · RAG evals (M4b) · optimization study (M4c) | ✅ |
+| **M5** | Ship: GBNF citations, systemd hardening, bootstrap, Docker, report, leaderboard | ✅ |
 
 ## Design docs
 
-- [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — full architecture & methodology
-- Milestone specs: [M2 serving](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) · [M3 observability](docs/superpowers/specs/2026-06-09-faraday-m3-observability-design.md) · [M4a quant sweep](docs/superpowers/specs/2026-06-09-faraday-m4a-quant-sweep-design.md) · [M4b RAG evals](docs/superpowers/specs/2026-06-10-faraday-m4b-rag-evals-design.md) · [M4c optimization](docs/superpowers/specs/2026-06-10-faraday-m4c-optimization-design.md)
-- Implementation plans: [M0–M1](docs/superpowers/plans/2026-06-08-faraday-m0-m1-rag-core.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-serving.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-observability.md) · [M4a](docs/superpowers/plans/2026-06-09-faraday-m4a-quant-sweep.md) · [M4b engine](docs/superpowers/plans/2026-06-10-faraday-m4b-rag-eval-engine.md) · [M4b data+run](docs/superpowers/plans/2026-06-10-faraday-m4b-rag-eval-data-and-run.md) · [M4c](docs/superpowers/plans/2026-06-10-faraday-m4c-optimization.md)
-- First results: [M4a sweep findings](results/sweep/findings.md) — the quality-vs-footprint frontier + [Pi-4 leaderboard](results/sweep/leaderboard.md) (18 cells, final)
-- As-built & findings: [M0](docs/superpowers/plans/2026-06-08-faraday-m0-as-built.md) · [M1](docs/superpowers/plans/2026-06-08-faraday-m1-as-built.md) · [M2](docs/superpowers/plans/2026-06-09-faraday-m2-as-built.md) · [M3](docs/superpowers/plans/2026-06-09-faraday-m3-as-built.md)
+- **[Technical report](docs/report.md)** — the full engineering narrative · **[Pi-4 leaderboard](docs/pi4-leaderboard.md)** — measured model menu
+- [Design spec](docs/superpowers/specs/2026-06-08-faraday-edge-rag-appliance-design.md) — architecture & methodology
+- Milestone specs: [M2](docs/superpowers/specs/2026-06-09-faraday-m2-serving-design.md) · [M3](docs/superpowers/specs/2026-06-09-faraday-m3-observability-design.md) · [M4a](docs/superpowers/specs/2026-06-09-faraday-m4a-quant-sweep-design.md) · [M4b](docs/superpowers/specs/2026-06-10-faraday-m4b-rag-evals-design.md) · [M4c](docs/superpowers/specs/2026-06-10-faraday-m4c-optimization-design.md) · [M5](docs/superpowers/specs/2026-06-10-faraday-m5-polish-and-ship-design.md)
+- Findings: [M4a quant sweep](results/sweep/findings.md) · [M4b RAG evals](results/evals/findings.md) · [M4c optimization](results/optimize/findings.md)
