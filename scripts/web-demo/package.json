@@ -1,0 +1,14 @@
+{
+  "name": "faraday-web-demo",
+  "private": true,
+  "type": "module",
+  "description": "Records the Faraday Pi web UI (SSE streaming + sources panel) into docs/assets/demo-web.gif. Playwright drives a browser against the Pi over the LAN; ffmpeg-static converts the captured video to GIF — no system installs.",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "record": "node record.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0",
+    "ffmpeg-static": "^5.2.0"
+  }
+}

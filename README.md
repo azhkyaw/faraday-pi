@@ -2,9 +2,9 @@
 
 **A private RAG appliance on a Raspberry Pi 4 — ask questions about your own documents, get cited answers, with zero network egress.**
 
-<!-- Hero demo GIF — record per docs/assets/README.md, then uncomment the line below:
-![Faraday answering a document question offline, with cited sources](docs/assets/demo.gif)
--->
+<p align="center">
+  <img src="docs/assets/demo-web.gif" alt="Faraday Pi answering a document question fully offline, streaming a cited answer" width="820">
+</p>
 
 Faraday runs a small LLM and a vector-search engine *entirely* on a 4 GB Raspberry Pi 4. Point it at your PDFs/notes and it answers questions about them with source citations — and nothing ever leaves the device. It's both a working privacy-first appliance and an inference-engineering study of how much GenAI capability fits on ~$60 of constrained edge hardware.
 
@@ -53,6 +53,8 @@ faraday ingest examples/corpus
 faraday ask "What CPU does the Raspberry Pi 4 use?"
 #   → "...a quad-core ARM Cortex-A72 (64-bit) CPU. [1]"   Sources: [1] pi-facts.md (0.855)
 ```
+
+![Faraday answering with the Pi's internet physically severed — generation and embeddings run on-device, still citing its source](docs/assets/demo-cli.gif)
 
 …or open the streaming web chat at `http://raspberrypi.local:8000` — it streams tokens over SSE (`sources → token → done`), shows retrieved sources with scores, and (with `FARADAY_USE_GRAMMAR=1`) constrains citations to valid sources by construction.
 

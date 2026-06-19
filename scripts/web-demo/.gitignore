@@ -1,0 +1,4 @@
+node_modules/
+videos/
+*.webm
+package-lock.json
