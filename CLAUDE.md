@@ -75,7 +75,13 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
   turns each into a recorded `notes` row (not a run-killer), and the persisted `raw/` log let
   the parser bug be fixed by **re-parsing, not re-benchmarking**.
 - **Measurement hygiene**: check `vcgencmd get_throttled` (0x0 = healthy) before trusting
-  benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache).
+  benchmarks; read process RSS, not `free` "used" (mmap'd weights hide in buff/cache). For a
+  quiet board, stop competitors — `sudo systemctl stop faraday-* ollama`: **`ollama` runs as a
+  service since M4c** and is the one persistent background competitor. The demo recorders
+  (`asciinema`/`agg`, installed 2026-06-19) are *invoke-only* — dormant unless recording, in
+  system Python isolated from the app venv — so they don't compete and leave no benchmark
+  residue (the recorder severs the net via `ip route`, not a firewall rule, and restores it on
+  exit; verified `0x0` + route restored after the demo run).
 - **mDNS `.local` doesn't resolve inside Docker** — Prometheus scrapes the Pi by LAN IP.
 - **llama-server sends nothing until a request finishes** (embeddings, non-streaming chat) —
   so an httpx read timeout measures the server's *total compute time* for the request.
