@@ -16,7 +16,7 @@ API = "https://en.wikipedia.org/w/api.php"
 
 # Wikimedia's robot policy (https://w.wiki/4wJS) 403s python-client requests whose
 # UA lacks contact info — the parenthetical URL is load-bearing, not decoration.
-USER_AGENT = "faraday-eval/0.1 (https://github.com/azhkyaw/faraday) python-httpx"
+USER_AGENT = "faraday-eval/0.1 (https://github.com/azhkyaw/faraday-pi) python-httpx"
 
 
 def slugify(title: str) -> str:

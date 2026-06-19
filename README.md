@@ -1,4 +1,4 @@
-# Faraday
+# Faraday Pi
 
 **A private RAG appliance on a Raspberry Pi 4 — ask questions about your own documents, get cited answers, with zero network egress.**
 
@@ -42,7 +42,7 @@ The one-line recommendation for *anyone* putting an LLM on a Pi 4: see the **[Pi
 On a fresh Raspberry Pi OS (64-bit), clone the repo to `~/faraday` and run one command:
 
 ```bash
-git clone https://github.com/azhkyaw/faraday ~/faraday && cd ~/faraday
+git clone https://github.com/azhkyaw/faraday-pi ~/faraday && cd ~/faraday
 bash scripts/bootstrap.sh
 ```
 
