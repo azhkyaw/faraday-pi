@@ -114,7 +114,7 @@ the app or tests on Windows (`sqlite-vec`'s native extension won't load there).
 
 ## State
 
-**M0–M5 COMPLETE — merged to `main`; `v1.0` tag held for the deferred demo GIF** (bring-up · RAG core+CLI · streaming web chat ·
+**M0–M5 COMPLETE — all on `main`; demo GIFs shipped; repo renamed **Faraday Pi**; `v1.0` held at user's discretion** (bring-up · RAG core+CLI · streaming web chat ·
 observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative M5). All on `main`:
 
 - **M4a quant sweep — ✅ COMPLETE, signed off 2026-06-10.** Final 18-cell artifacts +
@@ -168,15 +168,19 @@ observability · the inference lab M4a/b/c · ship-hardening + GBNF + narrative 
   (SIGKILL→restart) + `BOOT-OK` (reboot→all 3 auto-recover), the M3 stale-process fix;
   **one-shot `bootstrap.sh`**; **app Docker image** (+ package-data fix); **retrieval recall
   gate** (≥0.70, eval-as-test, ~15 min). Phase 2: **`docs/report.md`** (engineering write-up),
-  **`docs/pi4-leaderboard.md`**, **final README**. Deferred: the airplane-mode **demo GIF**
-  (recipe in the M5 as-built; README hero is a documented placeholder under `docs/assets/`).
-  118 unit tests pass, `0x0` throughout. As-built:
+  **`docs/pi4-leaderboard.md`**, **final README**. **Demo GIFs shipped post-M5** (2026-06-19,
+  `6ec68c9`): airplane-mode **CLI** (asciinema+agg) + streaming **web UI** (Playwright→ffmpeg),
+  both reproducible from committed recorders (`scripts/97_record_demo.sh`, `scripts/web-demo/`);
+  README web-hero + CLI-at-quickstart; web UI `<h1>`/`<title>` → "Faraday Pi". 118 unit tests
+  pass, `0x0` throughout. As-built:
   `docs/superpowers/plans/2026-06-10-faraday-m5-as-built.md`.
 
 Per-milestone detail (specs/plans/as-builts) in `docs/superpowers/`. **The project is merged to
-`main` and functionally complete; the `v1.0` tag is held until the deferred demo GIF lands**
-(then: commit the GIF + `git tag -a v1.0 && git push origin v1.0`). The Pi is now **systemd-managed** (gen/embed/app auto-start on boot, restart on
+`main`, functionally complete, demo GIFs shipped; the `v1.0` tag is now held only at the user's
+discretion** (nothing blocks it — to cut: `git tag -a v1.0 && git push origin v1.0`). The GitHub
+repo is renamed **`faraday-pi`** (front-door + README + app `<h1>` = "Faraday Pi"; package/CLI/env/systemd
+stay `faraday`); the Pi is on `main`, **systemd-managed** (gen/embed/app auto-start on boot, restart on
 crash) and has `ollama` + the 0.5B draft + a built `llama-speculative` from the M4c run. Open
-follow-ups: the deferred demo GIF; the optional reboot-gated overclock study; and the
+follow-ups: cut `v1.0` whenever; the optional reboot-gated overclock study; and the
 "next steps" in `docs/report.md` §9 (reranker, energy axis, Pi 5/NPU). M4/M5 verdict: the
 appliance is *already throughput-optimal* (the decode ceiling is physics).
